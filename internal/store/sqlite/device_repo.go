@@ -71,9 +71,15 @@ func (r *DeviceRepo) scanDevice(row *sql.Row) (*models.Device, error) {
 	if err != nil {
 		return nil, err
 	}
-	json.Unmarshal([]byte(ips), &d.IPAddresses)
-	json.Unmarshal([]byte(macs), &d.MACAddresses)
-	json.Unmarshal([]byte(tags), &d.Tags)
+	if err := json.Unmarshal([]byte(ips), &d.IPAddresses); err != nil {
+		return nil, fmt.Errorf("unmarshal ip_addresses: %w", err)
+	}
+	if err := json.Unmarshal([]byte(macs), &d.MACAddresses); err != nil {
+		return nil, fmt.Errorf("unmarshal mac_addresses: %w", err)
+	}
+	if err := json.Unmarshal([]byte(tags), &d.Tags); err != nil {
+		return nil, fmt.Errorf("unmarshal tags: %w", err)
+	}
 	d.Metadata = json.RawMessage(meta)
 	return &d, nil
 }
@@ -140,11 +146,20 @@ func (r *DeviceRepo) List(ctx context.Context, params models.ListParams) (*model
 			&d.FirstSeenAt, &d.LastSeenAt, &tags, &d.GroupID, &meta, &d.MapX, &d.MapY, &d.NetworkID); err != nil {
 			return nil, err
 		}
-		json.Unmarshal([]byte(ips), &d.IPAddresses)
-		json.Unmarshal([]byte(macs), &d.MACAddresses)
-		json.Unmarshal([]byte(tags), &d.Tags)
+		if err := json.Unmarshal([]byte(ips), &d.IPAddresses); err != nil {
+			return nil, fmt.Errorf("unmarshal ip_addresses: %w", err)
+		}
+		if err := json.Unmarshal([]byte(macs), &d.MACAddresses); err != nil {
+			return nil, fmt.Errorf("unmarshal mac_addresses: %w", err)
+		}
+		if err := json.Unmarshal([]byte(tags), &d.Tags); err != nil {
+			return nil, fmt.Errorf("unmarshal tags: %w", err)
+		}
 		d.Metadata = json.RawMessage(meta)
 		devices = append(devices, d)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	totalPages := (total + limit - 1) / limit
@@ -171,18 +186,39 @@ func (r *DeviceRepo) Update(ctx context.Context, d *models.Device) error {
 }
 
 func (r *DeviceRepo) Delete(ctx context.Context, id string) error {
-	_, err := r.db.ExecContext(ctx, "DELETE FROM devices WHERE id = ?", id)
-	return err
+	res, err := r.db.ExecContext(ctx, "DELETE FROM devices WHERE id = ?", id)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return store.ErrNotFound
+	}
+	return nil
 }
 
 func (r *DeviceRepo) UpdateStatus(ctx context.Context, id string, status models.DeviceStatus) error {
-	_, err := r.db.ExecContext(ctx, "UPDATE devices SET status = ? WHERE id = ?", status, id)
-	return err
+	res, err := r.db.ExecContext(ctx, "UPDATE devices SET status = ? WHERE id = ?", status, id)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return store.ErrNotFound
+	}
+	return nil
 }
 
 func (r *DeviceRepo) UpdatePosition(ctx context.Context, id string, x, y float64) error {
-	_, err := r.db.ExecContext(ctx, "UPDATE devices SET map_x = ?, map_y = ? WHERE id = ?", x, y, id)
-	return err
+	res, err := r.db.ExecContext(ctx, "UPDATE devices SET map_x = ?, map_y = ? WHERE id = ?", x, y, id)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return store.ErrNotFound
+	}
+	return nil
 }
 
 func (r *DeviceRepo) CountByStatus(ctx context.Context) (online, offline, unknown int, err error) {
@@ -206,20 +242,9 @@ func (r *DeviceRepo) CountByStatus(ctx context.Context) (online, offline, unknow
 			unknown = count
 		}
 	}
+	err = rows.Err()
 	return
 }
 
 // Ensure DeviceRepo satisfies the store.DeviceRepo interface at compile time.
-var _ interface {
-	List(ctx context.Context, params models.ListParams) (*models.ListResult[models.Device], error)
-	GetByID(ctx context.Context, id string) (*models.Device, error)
-	GetByMAC(ctx context.Context, mac string) (*models.Device, error)
-	GetByHostname(ctx context.Context, hostname string) (*models.Device, error)
-	GetByIP(ctx context.Context, ip string) (*models.Device, error)
-	Create(ctx context.Context, device *models.Device) error
-	Update(ctx context.Context, device *models.Device) error
-	Delete(ctx context.Context, id string) error
-	UpdateStatus(ctx context.Context, id string, status models.DeviceStatus) error
-	UpdatePosition(ctx context.Context, id string, x, y float64) error
-	CountByStatus(ctx context.Context) (online, offline, unknown int, err error)
-} = (*DeviceRepo)(nil)
+var _ store.DeviceRepo = (*DeviceRepo)(nil)

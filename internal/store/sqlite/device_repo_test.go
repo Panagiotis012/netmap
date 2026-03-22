@@ -3,12 +3,14 @@ package sqlite
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/netmap/netmap/internal/core/models"
+	"github.com/netmap/netmap/internal/store"
 )
 
 func testDB(t *testing.T) *DB {
@@ -111,7 +113,9 @@ func TestDeviceGetByMAC(t *testing.T) {
 		LastSeenAt:   time.Now(),
 		Tags:         []string{},
 	}
-	repo.Create(ctx, device)
+	if err := repo.Create(ctx, device); err != nil {
+		t.Fatal(err)
+	}
 
 	got, err := repo.GetByMAC(ctx, "11:22:33:44:55:66")
 	if err != nil {
@@ -134,7 +138,9 @@ func TestDeviceCountByStatus(t *testing.T) {
 			FirstSeenAt: time.Now(), LastSeenAt: time.Now(),
 			Tags: []string{},
 		}
-		repo.Create(ctx, d)
+		if err := repo.Create(ctx, d); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	on, off, unk, err := repo.CountByStatus(ctx)
@@ -143,5 +149,16 @@ func TestDeviceCountByStatus(t *testing.T) {
 	}
 	if on != 2 || off != 1 || unk != 0 {
 		t.Errorf("expected 2/1/0, got %d/%d/%d", on, off, unk)
+	}
+}
+
+func TestDeviceErrNotFound(t *testing.T) {
+	db := testDB(t)
+	repo := NewDeviceRepo(db)
+	ctx := context.Background()
+
+	_, err := repo.GetByID(ctx, "nonexistent")
+	if !errors.Is(err, store.ErrNotFound) {
+		t.Errorf("expected store.ErrNotFound, got %v", err)
 	}
 }
