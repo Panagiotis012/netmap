@@ -25,14 +25,14 @@ const (
 type Device struct {
 	ID              string          `json:"id" db:"id"`
 	Hostname        string          `json:"hostname" db:"hostname"`
-	IPAddresses     []string        `json:"ip_addresses"`
-	MACAddresses    []string        `json:"mac_addresses"`
+	IPAddresses     []string        `json:"ip_addresses" db:"ip_addresses"`
+	MACAddresses    []string        `json:"mac_addresses" db:"mac_addresses"`
 	OS              string          `json:"os" db:"os"`
 	Status          DeviceStatus    `json:"status" db:"status"`
 	DiscoveryMethod DiscoveryMethod `json:"discovery_method" db:"discovery_method"`
 	FirstSeenAt     time.Time       `json:"first_seen_at" db:"first_seen_at"`
 	LastSeenAt      time.Time       `json:"last_seen_at" db:"last_seen_at"`
-	Tags            []string        `json:"tags"`
+	Tags            []string        `json:"tags" db:"tags"`
 	GroupID         *string         `json:"group_id,omitempty" db:"group_id"`
 	Metadata        json.RawMessage `json:"metadata,omitempty" db:"metadata"`
 	MapX            *float64        `json:"map_x,omitempty" db:"map_x"`
@@ -41,10 +41,12 @@ type Device struct {
 }
 
 type Network struct {
-	ID      string `json:"id" db:"id"`
-	Name    string `json:"name" db:"name"`
-	Subnet  string `json:"subnet" db:"subnet"`
-	Gateway string `json:"gateway" db:"gateway"`
+	ID        string    `json:"id" db:"id"`
+	Name      string    `json:"name" db:"name"`
+	Subnet    string    `json:"subnet" db:"subnet"`
+	Gateway   string    `json:"gateway" db:"gateway"`
+	CreatedAt time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 }
 
 type ScanType string
@@ -69,7 +71,7 @@ type ScanJob struct {
 	Type        ScanType        `json:"type" db:"type"`
 	Target      string          `json:"target" db:"target"`
 	Status      ScanStatus      `json:"status" db:"status"`
-	StartedAt   time.Time       `json:"started_at" db:"started_at"`
+	StartedAt   *time.Time      `json:"started_at,omitempty" db:"started_at"`
 	CompletedAt *time.Time      `json:"completed_at,omitempty" db:"completed_at"`
 	Results     json.RawMessage `json:"results,omitempty" db:"results"`
 }
@@ -79,6 +81,13 @@ type ScanResults struct {
 	Stats ScanStats    `json:"stats"`
 }
 
+type HostStatus string
+
+const (
+	HostUp   HostStatus = "up"
+	HostDown HostStatus = "down"
+)
+
 type HostResult struct {
 	IP        string       `json:"ip"`
 	MAC       string       `json:"mac"`
@@ -86,7 +95,7 @@ type HostResult struct {
 	LatencyMs float64      `json:"latency_ms"`
 	Ports     []PortResult `json:"ports,omitempty"`
 	OSGuess   string       `json:"os_guess,omitempty"`
-	Status    string       `json:"status"`
+	Status    HostStatus   `json:"status"`
 }
 
 type PortResult struct {
@@ -109,7 +118,7 @@ type ListParams struct {
 	Sort   string `json:"sort"`
 	Order  string `json:"order"`
 	Search string `json:"search,omitempty"`
-	Status string `json:"status,omitempty"`
+	Status DeviceStatus `json:"status,omitempty"`
 	Tag    string `json:"tag,omitempty"`
 }
 
