@@ -62,10 +62,21 @@ func TestUnsubscribedEventIgnored(t *testing.T) {
 		called = true
 	})
 
+	// Use a sentinel subscriber on the same type to confirm the bus processed our publish
+	sentinel := make(chan struct{}, 1)
+	bus.Subscribe(models.EventDeviceLost, func(e models.Event) {
+		sentinel <- struct{}{}
+	})
+
 	bus.Publish(models.Event{Type: models.EventDeviceLost, Timestamp: time.Now()})
-	time.Sleep(50 * time.Millisecond)
+
+	select {
+	case <-sentinel:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for sentinel")
+	}
 
 	if called {
-		t.Error("handler should not have been called for unsubscribed event")
+		t.Error("handler should not have been called for unsubscribed event type")
 	}
 }

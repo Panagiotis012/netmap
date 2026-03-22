@@ -10,6 +10,7 @@ type Handler func(models.Event)
 
 type EventBus struct {
 	mu       sync.RWMutex
+	wg       sync.WaitGroup
 	handlers map[models.EventType][]Handler
 	closed   bool
 }
@@ -34,12 +35,17 @@ func (b *EventBus) Publish(event models.Event) {
 	}
 	for _, handler := range b.handlers[event.Type] {
 		h := handler
-		go h(event)
+		b.wg.Add(1)
+		go func() {
+			defer b.wg.Done()
+			h(event)
+		}()
 	}
 }
 
 func (b *EventBus) Close() {
 	b.mu.Lock()
-	defer b.mu.Unlock()
 	b.closed = true
+	b.mu.Unlock()
+	b.wg.Wait() // wait for all in-flight handlers to finish
 }
