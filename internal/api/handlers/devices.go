@@ -13,8 +13,6 @@ import (
 	"github.com/netmap/netmap/internal/store"
 )
 
-var ErrNotFound = errors.New("not found")
-
 type DeviceHandler struct {
 	repo store.DeviceRepo
 }
@@ -45,13 +43,18 @@ func (h *DeviceHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	device, err := h.repo.GetByID(r.Context(), id)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "device not found")
+		if errors.Is(err, store.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "device not found")
+		} else {
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
 		return
 	}
 	writeJSON(w, http.StatusOK, device)
 }
 
 func (h *DeviceHandler) Create(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var input struct {
 		Hostname    string   `json:"hostname"`
 		IPAddresses []string `json:"ip_addresses"`
@@ -85,10 +88,15 @@ func (h *DeviceHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *DeviceHandler) Update(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	id := chi.URLParam(r, "id")
 	existing, err := h.repo.GetByID(r.Context(), id)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "device not found")
+		if errors.Is(err, store.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "device not found")
+		} else {
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
 		return
 	}
 
@@ -126,7 +134,11 @@ func (h *DeviceHandler) Update(w http.ResponseWriter, r *http.Request) {
 func (h *DeviceHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if err := h.repo.Delete(r.Context(), id); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		if errors.Is(err, store.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "device not found")
+		} else {
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/netmap/netmap/internal/core/models"
+	"github.com/netmap/netmap/internal/store"
 )
 
 // In-memory mock for testing
@@ -34,17 +35,17 @@ func (m *mockDeviceRepo) GetByID(ctx context.Context, id string) (*models.Device
 	if d, ok := m.devices[id]; ok {
 		return d, nil
 	}
-	return nil, ErrNotFound
+	return nil, store.ErrNotFound
 }
 
 func (m *mockDeviceRepo) GetByMAC(ctx context.Context, mac string) (*models.Device, error) {
-	return nil, ErrNotFound
+	return nil, store.ErrNotFound
 }
 func (m *mockDeviceRepo) GetByHostname(ctx context.Context, hostname string) (*models.Device, error) {
-	return nil, ErrNotFound
+	return nil, store.ErrNotFound
 }
 func (m *mockDeviceRepo) GetByIP(ctx context.Context, ip string) (*models.Device, error) {
-	return nil, ErrNotFound
+	return nil, store.ErrNotFound
 }
 func (m *mockDeviceRepo) Create(ctx context.Context, d *models.Device) error {
 	m.devices[d.ID] = d
