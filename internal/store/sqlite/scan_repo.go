@@ -34,14 +34,21 @@ func (r *ScanRepo) Create(ctx context.Context, s *models.ScanJob) error {
 func (r *ScanRepo) GetByID(ctx context.Context, id string) (*models.ScanJob, error) {
 	var s models.ScanJob
 	var results string
+	var startedAt, completedAt sql.NullTime
 	err := r.db.QueryRowContext(ctx,
 		"SELECT id, type, target, status, started_at, completed_at, results FROM scan_jobs WHERE id = ?", id).
-		Scan(&s.ID, &s.Type, &s.Target, &s.Status, &s.StartedAt, &s.CompletedAt, &results)
+		Scan(&s.ID, &s.Type, &s.Target, &s.Status, &startedAt, &completedAt, &results)
 	if err == sql.ErrNoRows {
 		return nil, store.ErrNotFound
 	}
 	if err != nil {
 		return nil, err
+	}
+	if startedAt.Valid {
+		s.StartedAt = &startedAt.Time
+	}
+	if completedAt.Valid {
+		s.CompletedAt = &completedAt.Time
 	}
 	s.Results = json.RawMessage(results)
 	return &s, nil
@@ -75,8 +82,15 @@ func (r *ScanRepo) List(ctx context.Context, params models.ListParams) (*models.
 	for rows.Next() {
 		var s models.ScanJob
 		var results string
-		if err := rows.Scan(&s.ID, &s.Type, &s.Target, &s.Status, &s.StartedAt, &s.CompletedAt, &results); err != nil {
+		var startedAt, completedAt sql.NullTime
+		if err := rows.Scan(&s.ID, &s.Type, &s.Target, &s.Status, &startedAt, &completedAt, &results); err != nil {
 			return nil, err
+		}
+		if startedAt.Valid {
+			s.StartedAt = &startedAt.Time
+		}
+		if completedAt.Valid {
+			s.CompletedAt = &completedAt.Time
 		}
 		s.Results = json.RawMessage(results)
 		scans = append(scans, s)
@@ -96,10 +110,17 @@ func (r *ScanRepo) Update(ctx context.Context, s *models.ScanJob) error {
 	if results == nil {
 		results = json.RawMessage("{}")
 	}
-	_, err := r.db.ExecContext(ctx,
+	res, err := r.db.ExecContext(ctx,
 		"UPDATE scan_jobs SET status=?, started_at=?, completed_at=?, results=? WHERE id=?",
 		s.Status, s.StartedAt, s.CompletedAt, string(results), s.ID)
-	return err
+	if err != nil {
+		return err
+	}
+	affected, _ := res.RowsAffected()
+	if affected == 0 {
+		return store.ErrNotFound
+	}
+	return nil
 }
 
 func (r *ScanRepo) DeleteOlderThan(ctx context.Context, keepCount int) error {
