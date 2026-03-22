@@ -1,7 +1,10 @@
 // internal/core/config/config_test.go
 package config
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestDefaultConfig(t *testing.T) {
 	cfg := Default()
@@ -31,6 +34,17 @@ func TestConfigFromFlags(t *testing.T) {
 	}
 	if cfg.ScanInterval.String() != "10m0s" {
 		t.Errorf("expected 10m scan interval, got %s", cfg.ScanInterval)
+	}
+}
+
+func TestDBPath(t *testing.T) {
+	cfg := Default()
+	path := cfg.DBPath()
+	if path == "" {
+		t.Error("expected non-empty DBPath")
+	}
+	if !strings.HasSuffix(path, "netmap.db") {
+		t.Errorf("expected path to end with netmap.db, got %s", path)
 	}
 }
 

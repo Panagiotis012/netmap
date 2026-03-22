@@ -3,6 +3,7 @@ package config
 
 import (
 	"flag"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
@@ -18,7 +19,10 @@ type Config struct {
 }
 
 func Default() *Config {
-	home, _ := os.UserHomeDir()
+	home, err := os.UserHomeDir()
+	if err != nil {
+		home = "."
+	}
 	return &Config{
 		Port:         8080,
 		DataDir:      filepath.Join(home, ".netmap"),
@@ -31,6 +35,7 @@ func Default() *Config {
 
 func (c *Config) ParseFlags(args []string) error {
 	fs := flag.NewFlagSet("netmap", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
 	fs.IntVar(&c.Port, "port", c.Port, "HTTP server port")
 	fs.StringVar(&c.DataDir, "data-dir", c.DataDir, "Data directory")
 	fs.StringVar(&c.DBURL, "db-url", c.DBURL, "PostgreSQL connection URL (overrides SQLite)")
