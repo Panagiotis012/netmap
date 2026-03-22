@@ -33,3 +33,17 @@ func TestConfigFromFlags(t *testing.T) {
 		t.Errorf("expected 10m scan interval, got %s", cfg.ScanInterval)
 	}
 }
+
+func TestConfigDBURL(t *testing.T) {
+	cfg := Default()
+	err := cfg.ParseFlags([]string{"--db-url", "postgres://localhost/netmap"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.DBDriver != "postgres" {
+		t.Errorf("expected DBDriver=postgres when db-url is set, got %s", cfg.DBDriver)
+	}
+	if cfg.DBURL != "postgres://localhost/netmap" {
+		t.Errorf("expected DBURL to be set, got %s", cfg.DBURL)
+	}
+}
