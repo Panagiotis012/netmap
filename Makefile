@@ -1,4 +1,4 @@
-.PHONY: build run test dev
+.PHONY: build run test dev clean
 
 BINARY=netmap
 VERSION=0.1.0
@@ -14,3 +14,6 @@ test:
 
 dev:
 	go run ./cmd/netmap
+
+clean:
+	rm -rf bin/
