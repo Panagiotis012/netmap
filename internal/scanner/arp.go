@@ -11,10 +11,11 @@ import (
 
 type NetworkProber struct {
 	timeout time.Duration
+	workers int
 }
 
-func NewNetworkProber(timeout time.Duration) *NetworkProber {
-	return &NetworkProber{timeout: timeout}
+func NewNetworkProber(timeout time.Duration, workers int) *NetworkProber {
+	return &NetworkProber{timeout: timeout, workers: workers}
 }
 
 func (p *NetworkProber) ARPScan(ctx context.Context, subnet string) ([]models.HostResult, error) {
@@ -25,8 +26,18 @@ func (p *NetworkProber) ARPScan(ctx context.Context, subnet string) ([]models.Ho
 
 	// Phase 1: TCP-based discovery (ARP requires raw sockets / root)
 	var hosts []models.HostResult
-	for ip := cloneIP(ipnet.IP.Mask(ipnet.Mask)); ipnet.Contains(ip); incIP(ip) {
+
+	// Start at first usable host (skip network address)
+	ip := cloneIP(ipnet.IP.Mask(ipnet.Mask))
+	incIP(ip) // skip network address
+
+	for ; ipnet.Contains(ip); incIP(ip) {
 		if ctx.Err() != nil {
+			break
+		}
+		// Check if this is the broadcast (all host bits set)
+		broadcast := lastIP(ipnet)
+		if ip.Equal(broadcast) {
 			break
 		}
 		hosts = append(hosts, models.HostResult{
@@ -50,6 +61,14 @@ func incIP(ip net.IP) {
 			break
 		}
 	}
+}
+
+func lastIP(ipnet *net.IPNet) net.IP {
+	ip := cloneIP(ipnet.IP.Mask(ipnet.Mask))
+	for i := range ip {
+		ip[i] |= ^ipnet.Mask[i]
+	}
+	return ip
 }
 
 func countHosts(subnet string) int {

@@ -11,7 +11,12 @@ func (p *NetworkProber) PingSweep(ctx context.Context, hosts []string) ([]PingRe
 	var mu sync.Mutex
 	var results []PingResult
 	var wg sync.WaitGroup
-	sem := make(chan struct{}, 50)
+
+	workers := p.workers
+	if workers <= 0 {
+		workers = 50
+	}
+	sem := make(chan struct{}, workers)
 
 	for _, host := range hosts {
 		wg.Add(1)
@@ -20,17 +25,28 @@ func (p *NetworkProber) PingSweep(ctx context.Context, hosts []string) ([]PingRe
 			defer wg.Done()
 			defer func() { <-sem }()
 
-			start := time.Now()
 			alive := false
 			latency := float64(0)
 
-			for _, port := range []string{":80", ":443", ":22", ":445"} {
-				conn, err := net.DialTimeout("tcp", ip+port, p.timeout)
-				if err == nil {
-					conn.Close()
-					alive = true
-					latency = float64(time.Since(start).Microseconds()) / 1000.0
-					break
+			// Try port 80 first, measuring only the successful connection
+			start := time.Now()
+			conn, err := net.DialTimeout("tcp", ip+":80", p.timeout)
+			if err == nil {
+				conn.Close()
+				alive = true
+				latency = float64(time.Since(start).Microseconds()) / 1000.0
+			}
+
+			if !alive {
+				for _, port := range []string{":443", ":22", ":445"} {
+					start = time.Now()
+					conn, err := net.DialTimeout("tcp", ip+port, p.timeout)
+					if err == nil {
+						conn.Close()
+						alive = true
+						latency = float64(time.Since(start).Microseconds()) / 1000.0
+						break
+					}
 				}
 			}
 

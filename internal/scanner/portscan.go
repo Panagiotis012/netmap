@@ -2,8 +2,8 @@ package scanner
 
 import (
 	"context"
-	"fmt"
 	"net"
+	"strconv"
 
 	"github.com/netmap/netmap/internal/core/models"
 )
@@ -21,7 +21,7 @@ func (p *NetworkProber) PortScan(ctx context.Context, ip string, ports []int) ([
 		if ctx.Err() != nil {
 			break
 		}
-		addr := fmt.Sprintf("%s:%d", ip, port)
+		addr := net.JoinHostPort(ip, strconv.Itoa(port))
 		conn, err := net.DialTimeout("tcp", addr, p.timeout)
 		if err == nil {
 			conn.Close()
