@@ -15,10 +15,15 @@ var upgrader = websocket.Upgrader{
 }
 
 type Client struct {
-	hub  *Hub
-	conn *websocket.Conn
-	send chan []byte
-	mu   sync.Mutex
+	hub       *Hub
+	conn      *websocket.Conn
+	send      chan []byte
+	mu        sync.Mutex
+	closeOnce sync.Once
+}
+
+func (c *Client) close() {
+	c.closeOnce.Do(func() { c.conn.Close() })
 }
 
 type Hub struct {
@@ -84,7 +89,12 @@ func (h *Hub) Run() {
 				select {
 				case client.send <- message:
 				default:
-					go func(c *Client) { h.unregister <- c }(client)
+					go func(c *Client) {
+						select {
+						case h.unregister <- c:
+						case <-h.stop:
+						}
+					}(client)
 				}
 			}
 			h.mu.RUnlock()
@@ -118,7 +128,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *Client) writePump() {
-	defer c.conn.Close()
+	defer c.close()
 	for msg := range c.send {
 		c.mu.Lock()
 		err := c.conn.WriteMessage(websocket.TextMessage, msg)
@@ -132,7 +142,7 @@ func (c *Client) writePump() {
 func (c *Client) readPump() {
 	defer func() {
 		c.hub.unregister <- c
-		c.conn.Close()
+		c.close()
 	}()
 	for {
 		_, _, err := c.conn.ReadMessage()
