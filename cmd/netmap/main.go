@@ -52,6 +52,7 @@ func main() {
 	// WebSocket hub
 	hub := ws.NewHub()
 	go hub.Run()
+	defer hub.Stop()
 
 	// Bridge: event bus -> WebSocket
 	for _, eventType := range []models.EventType{
@@ -109,7 +110,10 @@ func main() {
 			if existing == nil && host.IP != "" {
 				existing, findErr = s.Devices.GetByIP(context.Background(), host.IP)
 			}
-			if findErr != nil || existing == nil {
+			if findErr != nil {
+				continue // skip on transient lookup error to avoid duplicate devices
+			}
+			if existing == nil {
 				// New device
 				device := &models.Device{
 					ID:              uuid.New().String(),
