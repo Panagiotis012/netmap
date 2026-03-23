@@ -2,15 +2,14 @@ package sqlite
 
 import (
 	"context"
-	"database/sql"
 )
 
 type ConfigRepo struct {
-	db *sql.DB
+	db *DB
 }
 
 func NewConfigRepo(db *DB) *ConfigRepo {
-	return &ConfigRepo{db: db.DB}
+	return &ConfigRepo{db: db}
 }
 
 func (r *ConfigRepo) Get(ctx context.Context, key string) string {
@@ -41,6 +40,9 @@ func (r *ConfigRepo) GetAll(ctx context.Context) map[string]string {
 		if rows.Scan(&k, &v) == nil {
 			result[k] = v
 		}
+	}
+	if err := rows.Err(); err != nil {
+		return map[string]string{}
 	}
 	return result
 }
