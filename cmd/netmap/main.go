@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -90,21 +91,64 @@ func main() {
 	prober := scanner.NewNetworkProber(2*time.Second, cfg.ScanWorkers)
 	sc := scanner.NewScanner(prober, cfg.ScanWorkers)
 
-	runScan := func(scanType models.ScanType, target string) {
-		scanID := uuid.New().String()
-		now := time.Now()
-		job := &models.ScanJob{
-			ID: scanID, Type: scanType, Target: target,
-			Status: models.ScanRunning, StartedAt: &now, // NOTE: pointer
-		}
-		s.Scans.Create(context.Background(), job)
+	configRepo := sqlite.NewConfigRepo(db)
 
+	// Override defaults with DB values
+	if v := configRepo.Get(context.Background(), "scan_workers"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 200 {
+			cfg.ScanWorkers = n
+		}
+	}
+	if v := configRepo.Get(context.Background(), "scan_interval"); v != "" {
+		if d, err := parseScanInterval(v); err == nil {
+			cfg.ScanInterval = d
+		}
+	}
+
+	runScan := func(ctx context.Context, scanID string, scanType models.ScanType, target string) {
+		job, err := s.Scans.GetByID(context.Background(), scanID)
+		if err != nil {
+			return
+		}
+		now := time.Now()
 		bus.Publish(models.Event{Type: models.EventScanStarted, Payload: job, Timestamp: now})
 
-		results, err := sc.Scan(context.Background(), target, scanType, nil)
+		scanStart := now
+		progressCb := func(scanned, total, found int) {
+			pct := 0
+			etaSecs := 0
+			if total > 0 {
+				pct = scanned * 100 / total
+				if scanned > 0 {
+					elapsed := time.Since(scanStart).Seconds()
+					rate := elapsed / float64(scanned)
+					remaining := float64(total-scanned) * rate
+					etaSecs = int(remaining)
+				}
+			}
+			bus.Publish(models.Event{
+				Type: models.EventScanProgress,
+				Payload: models.ScanProgressPayload{
+					ScanID:       scanID,
+					HostsScanned: scanned,
+					HostsTotal:   total,
+					HostsFound:   found,
+					Percent:      pct,
+					EtaSeconds:   etaSecs,
+				},
+				Timestamp: time.Now(),
+			})
+		}
+
+		results, err := sc.Scan(ctx, target, scanType, progressCb)
 		completed := time.Now()
+
 		if err != nil {
-			job.Status = models.ScanFailed
+			status := models.ScanFailed
+			if ctx.Err() != nil {
+				status = models.ScanCancelled
+			}
+			job.Status = status
 			job.CompletedAt = &completed
 			s.Scans.Update(context.Background(), job)
 			return
@@ -118,7 +162,6 @@ func main() {
 
 		bus.Publish(models.Event{Type: models.EventScanCompleted, Payload: results, Timestamp: completed})
 
-		// Upsert discovered devices (dedup: MAC → hostname → stable IP)
 		for _, host := range results.Hosts {
 			var existing *models.Device
 			var findErr error
@@ -132,10 +175,9 @@ func main() {
 				existing, findErr = s.Devices.GetByIP(context.Background(), host.IP)
 			}
 			if findErr != nil {
-				continue // skip on transient lookup error to avoid duplicate devices
+				continue
 			}
 			if existing == nil {
-				// New device
 				device := &models.Device{
 					ID:              uuid.New().String(),
 					Hostname:        host.Hostname,
@@ -156,6 +198,10 @@ func main() {
 				if host.IP != "" && !contains(existing.IPAddresses, host.IP) {
 					existing.IPAddresses = append(existing.IPAddresses, host.IP)
 				}
+				// MAC fix: only append if not already present
+				if host.MAC != "" && !contains(existing.MACAddresses, host.MAC) {
+					existing.MACAddresses = append(existing.MACAddresses, host.MAC)
+				}
 				s.Devices.Update(context.Background(), existing)
 				bus.Publish(models.Event{Type: models.EventDeviceUpdated, Payload: existing, Timestamp: now})
 			}
@@ -166,7 +212,14 @@ func main() {
 	sched := scanner.NewScheduler(cfg.ScanInterval, func() {
 		nets, _ := s.Networks.List(context.Background())
 		for _, n := range nets {
-			runScan(models.ScanDiscovery, n.Subnet)
+			scanID := uuid.New().String()
+			now := time.Now()
+			job := &models.ScanJob{
+				ID: scanID, Type: models.ScanDiscovery, Target: n.Subnet,
+				Status: models.ScanRunning, StartedAt: &now,
+			}
+			s.Scans.Create(context.Background(), job)
+			runScan(context.Background(), scanID, models.ScanDiscovery, n.Subnet)
 		}
 	})
 	sched.Start()
@@ -174,10 +227,9 @@ func main() {
 
 	// HTTP server
 	scanHandler := handlers.NewScanHandler(s.Scans)
-	scanHandler.ScanTrigger = func(ctx context.Context, scanID string, scanType models.ScanType, target string) {
-		runScan(scanType, target)
-	}
-	router := api.NewRouter(s, hub, scanHandler)
+	scanHandler.ScanTrigger = runScan
+	configHandler := handlers.NewConfigHandler(configRepo)
+	router := api.NewRouter(s, hub, scanHandler, configHandler)
 	router.Handle("/*", staticHandler())
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", cfg.Port),
@@ -209,4 +261,32 @@ func contains(slice []string, item string) bool {
 		}
 	}
 	return false
+}
+
+func parseScanInterval(s string) (time.Duration, error) {
+	switch s {
+	case "1m":
+		return time.Minute, nil
+	case "5m":
+		return 5 * time.Minute, nil
+	case "15m":
+		return 15 * time.Minute, nil
+	case "1h":
+		return time.Hour, nil
+	case "off":
+		return 0, nil
+	}
+	return 0, fmt.Errorf("unknown interval: %s", s)
+}
+
+func parsePortRanges(s string) []int {
+	parts := strings.Split(s, ",")
+	var ports []int
+	for _, p := range parts {
+		n, err := strconv.Atoi(strings.TrimSpace(p))
+		if err == nil && n > 0 && n <= 65535 {
+			ports = append(ports, n)
+		}
+	}
+	return ports
 }

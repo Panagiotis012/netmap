@@ -38,7 +38,8 @@ func setupTestServer(t *testing.T) *httptest.Server {
 	t.Cleanup(func() { hub.Stop() })
 
 	scanHandler := handlers.NewScanHandler(s.Scans)
-	router := NewRouter(s, hub, scanHandler)
+	configHandler := handlers.NewConfigHandler(sqlite.NewConfigRepo(db))
+	router := NewRouter(s, hub, scanHandler, configHandler)
 	return httptest.NewServer(router)
 }
 
