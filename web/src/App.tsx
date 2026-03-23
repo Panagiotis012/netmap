@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useEffect } from "react";
 import { TopNav } from "./components/TopNav/TopNav";
+import { NetworkMap } from "./components/NetworkMap/NetworkMap";
 import { DevicePanel } from "./components/DevicePanel/DevicePanel";
 import { useDeviceStore } from "./stores/deviceStore";
 import { useUIStore } from "./stores/uiStore";
@@ -11,8 +12,8 @@ function MapView() {
   const panelOpen = useUIStore((s) => s.panelOpen);
   return (
     <div style={{ display: "flex", height: "100%", flex: 1 }}>
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#71717a" }}>
-        Map View (Task 19)
+      <div style={{ flex: 1 }}>
+        <NetworkMap />
       </div>
       {panelOpen && (
         <div style={{ width: "320px", borderLeft: "1px solid #2a2e3a" }}>
