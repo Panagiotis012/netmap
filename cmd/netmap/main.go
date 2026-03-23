@@ -2,12 +2,15 @@ package main
 
 import (
 	"context"
+	"embed"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -24,6 +27,24 @@ import (
 )
 
 var version = "0.1.0"
+
+//go:embed all:dist
+var webFS embed.FS
+
+func staticHandler() http.Handler {
+	dist, _ := fs.Sub(webFS, "dist")
+	fileServer := http.FileServer(http.FS(dist))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Try to serve the file; if not found, serve index.html (SPA fallback)
+		path := strings.TrimPrefix(r.URL.Path, "/")
+		if path != "" {
+			if _, err := dist.Open(path); err != nil {
+				r.URL.Path = "/"
+			}
+		}
+		fileServer.ServeHTTP(w, r)
+	})
+}
 
 func main() {
 	cfg := config.Default()
@@ -155,6 +176,7 @@ func main() {
 	scanHandler := handlers.NewScanHandler(s.Scans)
 	scanHandler.ScanTrigger = runScan
 	router := api.NewRouter(s, hub, scanHandler)
+	router.Handle("/*", staticHandler())
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", cfg.Port),
 		Handler: router,
