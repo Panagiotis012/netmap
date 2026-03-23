@@ -98,16 +98,16 @@ func (h *ScanHandler) Trigger(w http.ResponseWriter, r *http.Request) {
 	h.cancels[scanID] = cancel
 	h.mu.Unlock()
 
-	if h.ScanTrigger != nil {
-		go func() {
-			defer func() {
-				h.mu.Lock()
-				delete(h.cancels, scanID)
-				h.mu.Unlock()
-			}()
-			h.ScanTrigger(ctx, scanID, input.Type, input.Target)
+	go func() {
+		defer func() {
+			h.mu.Lock()
+			delete(h.cancels, scanID)
+			h.mu.Unlock()
 		}()
-	}
+		if h.ScanTrigger != nil {
+			h.ScanTrigger(ctx, scanID, input.Type, input.Target)
+		}
+	}()
 
 	writeJSON(w, http.StatusAccepted, map[string]string{"id": scanID, "status": "running"})
 }
