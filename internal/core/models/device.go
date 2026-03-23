@@ -64,6 +64,7 @@ const (
 	ScanRunning   ScanStatus = "running"
 	ScanCompleted ScanStatus = "completed"
 	ScanFailed    ScanStatus = "failed"
+	ScanCancelled ScanStatus = "cancelled"
 )
 
 type ScanJob struct {
