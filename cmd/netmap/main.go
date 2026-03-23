@@ -174,7 +174,9 @@ func main() {
 
 	// HTTP server
 	scanHandler := handlers.NewScanHandler(s.Scans)
-	scanHandler.ScanTrigger = runScan
+	scanHandler.ScanTrigger = func(ctx context.Context, scanID string, scanType models.ScanType, target string) {
+		runScan(scanType, target)
+	}
 	router := api.NewRouter(s, hub, scanHandler)
 	router.Handle("/*", staticHandler())
 	srv := &http.Server{
