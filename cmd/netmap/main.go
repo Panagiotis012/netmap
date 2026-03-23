@@ -87,10 +87,6 @@ func main() {
 		})
 	}
 
-	// Scanner — NOTE: NewNetworkProber takes (timeout, workers)
-	prober := scanner.NewNetworkProber(2*time.Second, cfg.ScanWorkers)
-	sc := scanner.NewScanner(prober, cfg.ScanWorkers)
-
 	configRepo := sqlite.NewConfigRepo(db)
 
 	// Override defaults with DB values
@@ -104,6 +100,10 @@ func main() {
 			cfg.ScanInterval = d
 		}
 	}
+
+	// Scanner — NOTE: NewNetworkProber takes (timeout, workers)
+	prober := scanner.NewNetworkProber(2*time.Second, cfg.ScanWorkers)
+	sc := scanner.NewScanner(prober, cfg.ScanWorkers)
 
 	runScan := func(ctx context.Context, scanID string, scanType models.ScanType, target string) {
 		job, err := s.Scans.GetByID(context.Background(), scanID)

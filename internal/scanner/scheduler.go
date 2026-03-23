@@ -19,6 +19,9 @@ func NewScheduler(interval time.Duration, fn func()) *Scheduler {
 }
 
 func (s *Scheduler) Start() {
+	if s.interval == 0 {
+		return // "off" — no scheduled scans
+	}
 	go func() {
 		defer close(s.done)
 		ticker := time.NewTicker(s.interval)
@@ -35,6 +38,9 @@ func (s *Scheduler) Start() {
 }
 
 func (s *Scheduler) Stop() {
+	if s.interval == 0 {
+		return // never started, nothing to stop
+	}
 	close(s.stop)
 	<-s.done
 }
