@@ -38,10 +38,11 @@ export const api = {
     list: () => request<ListResult<ScanJob>>("/scans"),
     get: (id: string) => request<ScanJob>(`/scans/${id}`),
     trigger: (type: ScanType, target: string) =>
-      request<{ status: string }>("/scans", {
+      request<{ id: string; status: string }>("/scans", {
         method: "POST",
         body: JSON.stringify({ type, target }),
       }),
+    cancel: (id: string) => request<void>(`/scans/${id}`, { method: "DELETE" }),
   },
   system: {
     status: () => request<SystemStatus>("/system/status"),

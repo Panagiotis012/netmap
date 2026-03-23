@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { api } from "../lib/api";
 import type { ScanJob } from "../lib/types";
 
 export interface ActiveScan {
@@ -56,13 +57,7 @@ export const useScanStore = create<ScanState>((set, get) => ({
   },
 
   startScan: async (networkSubnet) => {
-    const r = await fetch("/api/v1/scans", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "discovery", target: networkSubnet }),
-    });
-    if (!r.ok) throw new Error("scan trigger failed");
-    const data = await r.json();
+    const data = await api.scans.trigger("discovery", networkSubnet);
     set({
       activeScan: {
         id: data.id,
@@ -83,7 +78,7 @@ export const useScanStore = create<ScanState>((set, get) => ({
   cancelScan: async () => {
     const { activeScan } = get();
     if (!activeScan) return;
-    await fetch(`/api/v1/scans/${activeScan.id}`, { method: "DELETE" });
+    await api.scans.cancel(activeScan.id);
     set({ activeScan: null, popoverOpen: false, popoverMode: null, scanning: false });
   },
 
