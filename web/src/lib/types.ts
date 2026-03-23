@@ -1,7 +1,7 @@
 export type DeviceStatus = "online" | "offline" | "unknown";
 export type DiscoveryMethod = "scan" | "agent" | "manual";
 export type ScanType = "discovery" | "port" | "full";
-export type ScanStatus = "pending" | "running" | "completed" | "failed";
+export type ScanStatus = "pending" | "running" | "completed" | "failed" | "cancelled";
 
 export interface Device {
   id: string;
@@ -81,8 +81,15 @@ export interface WSEvent {
 
 export interface SystemStatus {
   version: string;
+  db_path?: string;
   devices_online: number;
   devices_offline: number;
   devices_unknown: number;
   devices_total: number;
+}
+
+export interface NetMapConfig {
+  scan_interval: string;
+  scan_workers: number;
+  port_ranges: string;
 }
