@@ -101,7 +101,7 @@ func main() {
 
 		bus.Publish(models.Event{Type: models.EventScanStarted, Payload: job, Timestamp: now})
 
-		results, err := sc.Scan(context.Background(), target, scanType)
+		results, err := sc.Scan(context.Background(), target, scanType, nil)
 		completed := time.Now()
 		if err != nil {
 			job.Status = models.ScanFailed

@@ -14,9 +14,13 @@ type PingResult struct {
 	LatencyMs float64
 }
 
+// ProgressFunc is called after each host is probed during PingSweep.
+// scanned = hosts attempted so far, total = total hosts, found = alive hosts found so far.
+type ProgressFunc func(scanned, total, found int)
+
 type Prober interface {
 	ARPScan(ctx context.Context, subnet string) ([]models.HostResult, error)
-	PingSweep(ctx context.Context, hosts []string) ([]PingResult, error)
+	PingSweep(ctx context.Context, hosts []string, progress ProgressFunc) ([]PingResult, error)
 	PortScan(ctx context.Context, ip string, ports []int) ([]models.PortResult, error)
 }
 
@@ -37,7 +41,7 @@ func NewScanner(prober Prober, workers int) *Scanner {
 	return &Scanner{prober: prober, workers: workers}
 }
 
-func (s *Scanner) Scan(ctx context.Context, subnet string, mode models.ScanType) (*models.ScanResults, error) {
+func (s *Scanner) Scan(ctx context.Context, subnet string, mode models.ScanType, progress ProgressFunc) (*models.ScanResults, error) {
 	start := time.Now()
 
 	// Step 1: ARP/discovery
@@ -51,7 +55,7 @@ func (s *Scanner) Scan(ctx context.Context, subnet string, mode models.ScanType)
 	for i, h := range hosts {
 		ips[i] = h.IP
 	}
-	pingResults, err := s.prober.PingSweep(ctx, ips)
+	pingResults, err := s.prober.PingSweep(ctx, ips, progress)
 	if err != nil {
 		return nil, err
 	}

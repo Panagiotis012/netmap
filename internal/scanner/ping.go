@@ -4,19 +4,22 @@ import (
 	"context"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
-func (p *NetworkProber) PingSweep(ctx context.Context, hosts []string) ([]PingResult, error) {
+func (p *NetworkProber) PingSweep(ctx context.Context, hosts []string, progress ProgressFunc) ([]PingResult, error) {
 	var mu sync.Mutex
 	var results []PingResult
 	var wg sync.WaitGroup
+	var scanned int32
 
 	workers := p.workers
 	if workers <= 0 {
 		workers = 50
 	}
 	sem := make(chan struct{}, workers)
+	total := len(hosts)
 
 	for _, host := range hosts {
 		wg.Add(1)
@@ -28,7 +31,6 @@ func (p *NetworkProber) PingSweep(ctx context.Context, hosts []string) ([]PingRe
 			alive := false
 			latency := float64(0)
 
-			// Try port 80 first, measuring only the successful connection
 			start := time.Now()
 			conn, err := net.DialTimeout("tcp", ip+":80", p.timeout)
 			if err == nil {
@@ -54,6 +56,14 @@ func (p *NetworkProber) PingSweep(ctx context.Context, hosts []string) ([]PingRe
 				mu.Lock()
 				results = append(results, PingResult{IP: ip, Alive: true, LatencyMs: latency})
 				mu.Unlock()
+			}
+
+			n := int(atomic.AddInt32(&scanned, 1))
+			if progress != nil {
+				mu.Lock()
+				found := len(results)
+				mu.Unlock()
+				progress(n, total, found)
 			}
 		}(host)
 	}

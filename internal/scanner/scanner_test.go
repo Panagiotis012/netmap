@@ -16,7 +16,7 @@ func (m *MockProber) ARPScan(ctx context.Context, subnet string) ([]models.HostR
 	return m.hosts, nil
 }
 
-func (m *MockProber) PingSweep(ctx context.Context, hosts []string) ([]PingResult, error) {
+func (m *MockProber) PingSweep(ctx context.Context, hosts []string, progress ProgressFunc) ([]PingResult, error) {
 	var results []PingResult
 	for _, h := range hosts {
 		results = append(results, PingResult{IP: h, Alive: true, LatencyMs: 1.5})
@@ -42,7 +42,7 @@ func TestScannerDiscoveryMode(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	results, err := s.Scan(ctx, "192.168.1.0/24", models.ScanDiscovery)
+	results, err := s.Scan(ctx, "192.168.1.0/24", models.ScanDiscovery, nil)
 	if err != nil {
 		t.Fatalf("scan error: %v", err)
 	}
@@ -65,7 +65,7 @@ func TestScannerPortMode(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	results, err := s.Scan(ctx, "192.168.1.0/24", models.ScanPort)
+	results, err := s.Scan(ctx, "192.168.1.0/24", models.ScanPort, nil)
 	if err != nil {
 		t.Fatalf("scan error: %v", err)
 	}
