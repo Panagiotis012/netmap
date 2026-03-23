@@ -3,6 +3,8 @@ import { useEffect } from "react";
 import { TopNav } from "./components/TopNav/TopNav";
 import { NetworkMap } from "./components/NetworkMap/NetworkMap";
 import { DevicePanel } from "./components/DevicePanel/DevicePanel";
+import { CommandPalette } from "./components/CommandPalette/CommandPalette";
+import { ToastProvider } from "./components/Toast/ToastProvider";
 import { useDeviceStore } from "./stores/deviceStore";
 import { useUIStore } from "./stores/uiStore";
 import { wsClient } from "./lib/ws";
@@ -55,19 +57,22 @@ export default function App() {
   }, []);
 
   return (
-    <BrowserRouter>
-      <div style={{ height: "100vh", display: "flex", flexDirection: "column", backgroundColor: "#0f1117" }}>
-        <TopNav />
-        <main style={{ flex: 1, overflow: "hidden", display: "flex" }}>
-          <Routes>
-            <Route path="/" element={<MapView />} />
-            <Route path="/devices" element={<DeviceListPage />} />
-            <Route path="/scans" element={<ScansPage />} />
-            <Route path="/alerts" element={<div style={{ padding: "32px", color: "#71717a" }}>Alerts — Phase 2</div>} />
-            <Route path="/settings" element={<SettingsPage />} />
-          </Routes>
-        </main>
-      </div>
-    </BrowserRouter>
+    <ToastProvider>
+      <BrowserRouter>
+        <div style={{ height: "100vh", display: "flex", flexDirection: "column", backgroundColor: "#0f1117" }}>
+          <TopNav />
+          <main style={{ flex: 1, overflow: "hidden", display: "flex" }}>
+            <Routes>
+              <Route path="/" element={<MapView />} />
+              <Route path="/devices" element={<DeviceListPage />} />
+              <Route path="/scans" element={<ScansPage />} />
+              <Route path="/alerts" element={<div style={{ padding: "32px", color: "#71717a" }}>Alerts — Phase 2</div>} />
+              <Route path="/settings" element={<SettingsPage />} />
+            </Routes>
+          </main>
+          <CommandPalette />
+        </div>
+      </BrowserRouter>
+    </ToastProvider>
   );
 }
