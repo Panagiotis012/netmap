@@ -31,7 +31,9 @@ func TestConfigGet_ReturnsDefaults(t *testing.T) {
 		t.Fatalf("expected 200, got %d", w.Code)
 	}
 	var body map[string]string
-	json.NewDecoder(w.Body).Decode(&body)
+	if err := json.NewDecoder(w.Body).Decode(&body); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
 	if body["scan_interval"] != "5m" {
 		t.Errorf("expected default scan_interval=5m, got %q", body["scan_interval"])
 	}
@@ -55,7 +57,9 @@ func TestConfigPut_MergesKeys(t *testing.T) {
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 	}
 	var resp map[string]string
-	json.NewDecoder(w.Body).Decode(&resp)
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
 	if resp["scan_interval"] != "15m" {
 		t.Errorf("expected updated scan_interval=15m, got %q", resp["scan_interval"])
 	}
