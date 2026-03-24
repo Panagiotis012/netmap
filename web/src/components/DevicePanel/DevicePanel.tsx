@@ -1,9 +1,11 @@
-import { X, Wifi, WifiOff, HelpCircle } from "lucide-react";
+import { X, Wifi, WifiOff, HelpCircle, Trash2 } from "lucide-react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { useUIStore } from "../../stores/uiStore";
 import { useDeviceStore } from "../../stores/deviceStore";
 import { DeviceInfo } from "./DeviceInfo";
 import { TagEditor } from "./TagEditor";
+import { ConfirmModal } from "../ui/ConfirmModal";
 import { api } from "../../lib/api";
 
 const statusConfig = {
@@ -17,6 +19,8 @@ export function DevicePanel() {
   const selectDevice = useUIStore((s) => s.selectDevice);
   const devices = useDeviceStore((s) => s.devices);
   const upsert = useDeviceStore((s) => s.upsert);
+  const remove = useDeviceStore((s) => s.remove);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const device = devices.find((d) => d.id === selectedId);
   if (!device) return null;
@@ -27,6 +31,12 @@ export function DevicePanel() {
   const updateTags = async (tags: string[]) => {
     const updated = await api.devices.update(device.id, { tags });
     upsert(updated);
+  };
+
+  const handleDelete = async () => {
+    await api.devices.delete(device.id);
+    remove(device.id);
+    selectDevice(null);
   };
 
   return (
@@ -41,9 +51,14 @@ export function DevicePanel() {
         <h3 style={{ margin: 0, fontWeight: 500, color: "#f4f4f5", fontSize: "14px" }}>
           {device.hostname || "Unknown Device"}
         </h3>
-        <button onClick={() => selectDevice(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#71717a" }}>
-          <X size={16} />
-        </button>
+        <div style={{ display: "flex", gap: "4px" }}>
+          <button onClick={() => setConfirmDelete(true)} title="Delete device" style={{ background: "none", border: "none", cursor: "pointer", color: "#71717a", padding: "2px" }}>
+            <Trash2 size={14} />
+          </button>
+          <button onClick={() => selectDevice(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#71717a", padding: "2px" }}>
+            <X size={16} />
+          </button>
+        </div>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
@@ -93,6 +108,15 @@ export function DevicePanel() {
         <span style={{ color: "#71717a", fontSize: "12px", display: "block", marginBottom: "6px" }}>Tags</span>
         <TagEditor tags={device.tags} onChange={updateTags} />
       </div>
+
+      <ConfirmModal
+        open={confirmDelete}
+        title="Delete Device"
+        message={`Remove "${device.hostname || device.ip_addresses[0]}" from NetMap? This cannot be undone.`}
+        confirmLabel="Delete"
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </motion.div>
   );
 }
