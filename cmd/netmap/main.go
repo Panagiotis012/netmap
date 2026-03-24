@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -210,6 +211,9 @@ func main() {
 				bus.Publish(models.Event{Type: models.EventDeviceUpdated, Payload: existing, Timestamp: now})
 			}
 		}
+
+		// Mark devices in this subnet that didn't respond as offline.
+		markOfflineInSubnet(context.Background(), s, bus, target, results.Hosts, now)
 	}
 
 	// Scheduler
@@ -281,6 +285,60 @@ func parseScanInterval(s string) (time.Duration, error) {
 		return 0, nil
 	}
 	return 0, fmt.Errorf("unknown interval: %s", s)
+}
+
+// markOfflineInSubnet marks devices whose IPs fall inside the scanned subnet
+// as offline if they were not present in the scan results.
+func markOfflineInSubnet(ctx context.Context, s *store.Store, bus *eventbus.EventBus, subnet string, found []models.HostResult, now time.Time) {
+	_, ipNet, err := net.ParseCIDR(subnet)
+	if err != nil {
+		return
+	}
+
+	// Build a set of IPs that responded.
+	seenIPs := make(map[string]bool, len(found))
+	for _, h := range found {
+		seenIPs[h.IP] = true
+	}
+
+	// List all devices (high limit to get everything).
+	result, err := s.Devices.List(ctx, models.ListParams{Limit: 10000, Page: 1})
+	if err != nil {
+		return
+	}
+
+	for i := range result.Items {
+		d := &result.Items[i]
+		if d.Status != models.StatusOnline {
+			continue
+		}
+		// Check if any of the device's IPs fall within the subnet.
+		inSubnet := false
+		for _, ipStr := range d.IPAddresses {
+			if ip := net.ParseIP(ipStr); ip != nil && ipNet.Contains(ip) {
+				inSubnet = true
+				break
+			}
+		}
+		if !inSubnet {
+			continue
+		}
+		// Check if any of the device's IPs were seen in the scan.
+		wasSeen := false
+		for _, ipStr := range d.IPAddresses {
+			if seenIPs[ipStr] {
+				wasSeen = true
+				break
+			}
+		}
+		if wasSeen {
+			continue
+		}
+		// Device is in the subnet but didn't respond — mark offline.
+		d.Status = models.StatusOffline
+		s.Devices.Update(ctx, d)
+		bus.Publish(models.Event{Type: models.EventDeviceUpdated, Payload: d, Timestamp: now})
+	}
 }
 
 func parsePortRanges(s string) []int {
