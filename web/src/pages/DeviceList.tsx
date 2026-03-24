@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDeviceStore } from "../stores/deviceStore";
 import { useUIStore } from "../stores/uiStore";
@@ -29,9 +29,12 @@ function exportCSV(devices: Device[]) {
 export function DeviceList() {
   const devices = useDeviceStore((s) => s.devices);
   const loading = useDeviceStore((s) => s.loading);
+  const fetch = useDeviceStore((s) => s.fetch);
   const selectDevice = useUIStore((s) => s.selectDevice);
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
+
+  useEffect(() => { fetch(); }, []);
 
   const q = search.toLowerCase();
   const filtered = devices
