@@ -14,12 +14,14 @@ export function Scanning() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    config.fetch().then(() => {
-      const c = useConfigStore.getState();
-      setIntervalVal(c.scan_interval);
-      setWorkers(c.scan_workers);
-      setPortRanges(c.port_ranges);
-    });
+    config.fetch()
+      .then(() => {
+        const c = useConfigStore.getState();
+        setIntervalVal(c.scan_interval);
+        setWorkers(c.scan_workers);
+        setPortRanges(c.port_ranges);
+      })
+      .catch(() => toast("Failed to load settings", "error"));
   }, []);
 
   const isValidPorts = (v: string) => /^\d+(,\d+)*$/.test(v);
@@ -89,7 +91,7 @@ export function Scanning() {
       </div>
 
       <div style={{ marginBottom: "24px" }}>
-        <label style={{ display: "block", fontSize: "12px", color: "#71717a", marginBottom: "6px" }}>Port Ranges</label>
+        <label style={{ display: "block", fontSize: "12px", color: "#71717a", marginBottom: "6px" }}>Ports (comma-separated)</label>
         <input
           type="text"
           value={portRanges}

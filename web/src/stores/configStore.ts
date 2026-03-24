@@ -12,7 +12,9 @@ export const useConfigStore = create<ConfigState>((set) => ({
   port_ranges: "22,80,443,8080,8443",
 
   fetch: async () => {
-    const raw = await fetch("/api/v1/system/config").then((r) => r.json());
+    const r = await fetch("/api/v1/system/config");
+    if (!r.ok) throw new Error("failed to load config");
+    const raw = await r.json();
     set({
       scan_interval: raw.scan_interval,
       scan_workers: parseInt(raw.scan_workers, 10),

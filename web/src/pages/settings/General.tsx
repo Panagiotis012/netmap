@@ -21,6 +21,7 @@ export function General() {
       <h2 style={{ color: "#f4f4f5", margin: "0 0 20px", fontSize: "16px" }}>General</h2>
       <div style={{ background: "#1a1d27", borderRadius: "8px", padding: "0 16px" }}>
         {row("Version", status?.version ?? "—")}
+        {status?.started_at && row("Started at", new Date(status.started_at).toLocaleString())}
         {status?.db_path && row("DB Path", status.db_path)}
         {row("Devices online", String(status?.devices_online ?? "—"))}
         {row("Devices total", String(status?.devices_total ?? "—"))}
