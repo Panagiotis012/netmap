@@ -55,32 +55,59 @@ func (s *Scanner) Scan(ctx context.Context, subnet string, mode models.ScanType,
 		return nil, err
 	}
 
-	// Step 2: Ping sweep to confirm + get latency
-	ips := make([]string, len(hosts))
-	for i, h := range hosts {
-		ips[i] = h.IP
+	// Step 2: Ping sweep for latency + confirm unverified hosts.
+	// Hosts with a MAC came from real ARP — already confirmed alive.
+	// Hosts without a MAC came from subnet enumeration — need TCP confirmation.
+	var arpConfirmed []models.HostResult
+	var needsProbe []string
+	for _, h := range hosts {
+		if h.MAC != "" {
+			arpConfirmed = append(arpConfirmed, h)
+		} else {
+			needsProbe = append(needsProbe, h.IP)
+		}
 	}
-	pingResults, err := s.prober.PingSweep(ctx, ips, progress)
+
+	pingResults, err := s.prober.PingSweep(ctx, append(needsProbe, func() []string {
+		ips := make([]string, len(arpConfirmed))
+		for i, h := range arpConfirmed {
+			ips[i] = h.IP
+		}
+		return ips
+	}()...), progress)
 	if err != nil {
 		return nil, err
 	}
 
-	// Keep only hosts that responded; copy latency from ping results.
 	pingMap := make(map[string]PingResult)
 	for _, p := range pingResults {
 		pingMap[p.IP] = p
 	}
-	alive := hosts[:0]
-	for _, h := range hosts {
+
+	// ARP-confirmed hosts are always alive; enrich with latency/hostname if ping responded.
+	for i, h := range arpConfirmed {
 		if p, ok := pingMap[h.IP]; ok {
-			h.LatencyMs = p.LatencyMs
+			arpConfirmed[i].LatencyMs = p.LatencyMs
 			if h.Hostname == "" && p.Hostname != "" {
-				h.Hostname = p.Hostname
+				arpConfirmed[i].Hostname = p.Hostname
 			}
-			alive = append(alive, h)
 		}
 	}
-	hosts = alive
+
+	// Enumerated hosts only survive if TCP probe confirmed them.
+	var tcpAlive []models.HostResult
+	for _, ip := range needsProbe {
+		if p, ok := pingMap[ip]; ok {
+			tcpAlive = append(tcpAlive, models.HostResult{
+				IP:        ip,
+				Hostname:  p.Hostname,
+				LatencyMs: p.LatencyMs,
+				Status:    models.HostStatus("up"),
+			})
+		}
+	}
+
+	hosts = append(arpConfirmed, tcpAlive...)
 
 	// Step 3: Port scan (port and full modes)
 	if mode == models.ScanPort || mode == models.ScanFull {
