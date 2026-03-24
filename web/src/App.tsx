@@ -7,12 +7,14 @@ import { CommandPalette } from "./components/CommandPalette/CommandPalette";
 import { ToastProvider } from "./components/Toast/ToastProvider";
 import { useDeviceStore } from "./stores/deviceStore";
 import { useUIStore } from "./stores/uiStore";
+import { useAuthStore } from "./stores/authStore";
 import { wsClient } from "./lib/ws";
 import type { Device } from "./lib/types";
 import { Scans } from "./pages/Scans";
 import { DeviceList } from "./pages/DeviceList";
 import { Settings } from "./pages/Settings";
 import { Alerts } from "./pages/Alerts";
+import { Login } from "./pages/Login";
 import { Networks } from "./pages/settings/Networks";
 import { Scanning } from "./pages/settings/Scanning";
 import { General } from "./pages/settings/General";
@@ -33,8 +35,7 @@ function MapView() {
   );
 }
 
-
-export default function App() {
+function AppShell() {
   const fetchDevices = useDeviceStore((s) => s.fetch);
   const upsert = useDeviceStore((s) => s.upsert);
 
@@ -51,26 +52,63 @@ export default function App() {
   }, []);
 
   return (
+    <BrowserRouter>
+      <div style={{ height: "100vh", display: "flex", flexDirection: "column", backgroundColor: "#0f1117" }}>
+        <TopNav />
+        <main style={{ flex: 1, overflow: "hidden", display: "flex" }}>
+          <Routes>
+            <Route path="/" element={<MapView />} />
+            <Route path="/devices" element={<DeviceList />} />
+            <Route path="/scans" element={<Scans />} />
+            <Route path="/alerts" element={<Alerts />} />
+            <Route path="/settings" element={<Settings />}>
+              <Route index element={<Networks />} />
+              <Route path="scanning" element={<Scanning />} />
+              <Route path="general" element={<General />} />
+            </Route>
+          </Routes>
+        </main>
+        <CommandPalette />
+      </div>
+    </BrowserRouter>
+  );
+}
+
+export default function App() {
+  const { loading, authenticated, setup, fetchStatus } = useAuthStore();
+
+  useEffect(() => {
+    fetchStatus();
+  }, []);
+
+  if (loading) {
+    return (
+      <div style={{
+        height: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "#0f1117",
+        color: "#64748b",
+        fontSize: "14px",
+      }}>
+        Loading…
+      </div>
+    );
+  }
+
+  // If auth is configured and user is not authenticated, show login.
+  if (setup && !authenticated) {
+    return (
+      <ToastProvider>
+        <Login />
+      </ToastProvider>
+    );
+  }
+
+  return (
     <ToastProvider>
-      <BrowserRouter>
-        <div style={{ height: "100vh", display: "flex", flexDirection: "column", backgroundColor: "#0f1117" }}>
-          <TopNav />
-          <main style={{ flex: 1, overflow: "hidden", display: "flex" }}>
-            <Routes>
-              <Route path="/" element={<MapView />} />
-              <Route path="/devices" element={<DeviceList />} />
-              <Route path="/scans" element={<Scans />} />
-              <Route path="/alerts" element={<Alerts />} />
-              <Route path="/settings" element={<Settings />}>
-                <Route index element={<Networks />} />
-                <Route path="scanning" element={<Scanning />} />
-                <Route path="general" element={<General />} />
-              </Route>
-            </Routes>
-          </main>
-          <CommandPalette />
-        </div>
-      </BrowserRouter>
+      <AppShell />
     </ToastProvider>
   );
 }

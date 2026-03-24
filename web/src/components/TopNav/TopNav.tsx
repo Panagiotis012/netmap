@@ -1,10 +1,11 @@
 import { useEffect } from "react";
 import { NavLink } from "react-router-dom";
-import { Map, Monitor, Bell, Radar, Settings, Search } from "lucide-react";
+import { Map, Monitor, Bell, Radar, Settings, Search, LogOut } from "lucide-react";
 import { useDeviceStore } from "../../stores/deviceStore";
 import { useUIStore } from "../../stores/uiStore";
 import { useNetworkStore } from "../../stores/networkStore";
 import { useAlertsStore } from "../../stores/alertsStore";
+import { useAuthStore } from "../../stores/authStore";
 import { StatusBadge } from "./StatusBadge";
 import { ScanButton } from "../ScanButton/ScanButton";
 import { ScanPopover } from "../ScanButton/ScanPopover";
@@ -23,6 +24,7 @@ export function TopNav() {
   const toggleCommandPalette = useUIStore((s) => s.toggleCommandPalette);
   const fetchNetworks = useNetworkStore((s) => s.fetch);
   const unread = useAlertsStore((s) => s.unread);
+  const { setup, logout } = useAuthStore();
 
   useScanProgress();
 
@@ -99,6 +101,15 @@ export function TopNav() {
           <ScanButton />
           <StatusBadge count={online} label="up" color="teal" />
           <StatusBadge count={offline} label="dn" color="red" />
+          {setup && (
+            <button
+              onClick={logout}
+              title="Sign out"
+              style={{ display: "flex", alignItems: "center", padding: "4px 6px", borderRadius: "6px", background: "transparent", border: "none", color: "#71717a", cursor: "pointer" }}
+            >
+              <LogOut size={14} strokeWidth={1.5} />
+            </button>
+          )}
         </div>
       </nav>
       <ScanPopover />

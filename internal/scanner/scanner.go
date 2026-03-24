@@ -12,6 +12,7 @@ type PingResult struct {
 	IP        string
 	Alive     bool
 	LatencyMs float64
+	Hostname  string
 }
 
 // ProgressFunc is called after each host is probed during PingSweep.
@@ -73,6 +74,9 @@ func (s *Scanner) Scan(ctx context.Context, subnet string, mode models.ScanType,
 	for _, h := range hosts {
 		if p, ok := pingMap[h.IP]; ok {
 			h.LatencyMs = p.LatencyMs
+			if h.Hostname == "" && p.Hostname != "" {
+				h.Hostname = p.Hostname
+			}
 			alive = append(alive, h)
 		}
 	}

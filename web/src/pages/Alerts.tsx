@@ -64,12 +64,14 @@ function AlertIcon({ type }: { type: Alert["type"] }) {
 
 export function Alerts() {
   const alerts = useAlertsStore((s) => s.alerts);
+  const fetch = useAlertsStore((s) => s.fetch);
   const markRead = useAlertsStore((s) => s.markRead);
   const clear = useAlertsStore((s) => s.clear);
 
   useEffect(() => {
+    fetch();
     markRead();
-  }, [markRead]);
+  }, []);
 
   return (
     <div style={{ flex: 1, overflowY: "auto", backgroundColor: "#0f1117", padding: "24px" }}>

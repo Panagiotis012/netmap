@@ -53,8 +53,9 @@ func (p *NetworkProber) PingSweep(ctx context.Context, hosts []string, progress 
 			}
 
 			if alive {
+				hostname, _ := resolveHostname(ip)
 				mu.Lock()
-				results = append(results, PingResult{IP: ip, Alive: true, LatencyMs: latency})
+				results = append(results, PingResult{IP: ip, Alive: true, LatencyMs: latency, Hostname: hostname})
 				mu.Unlock()
 			}
 

@@ -66,6 +66,8 @@ func main() {
 		Devices:  sqlite.NewDeviceRepo(db),
 		Networks: sqlite.NewNetworkRepo(db),
 		Scans:    sqlite.NewScanRepo(db),
+		Alerts:   sqlite.NewAlertRepo(db),
+		Sessions: sqlite.NewSessionRepo(db),
 	}
 
 	// Event bus
@@ -247,7 +249,9 @@ func main() {
 	scanHandler := handlers.NewScanHandler(s.Scans)
 	scanHandler.ScanTrigger = runScan
 	configHandler := handlers.NewConfigHandler(configRepo)
-	router := api.NewRouter(s, hub, scanHandler, configHandler, version)
+	authHandler := handlers.NewAuthHandler(configRepo, s.Sessions)
+	alertHandler := handlers.NewAlertHandler(s.Alerts)
+	router := api.NewRouter(s, hub, scanHandler, configHandler, authHandler, alertHandler, version)
 	router.Handle("/*", staticHandler())
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", cfg.Port),

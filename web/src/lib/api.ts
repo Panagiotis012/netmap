@@ -5,8 +5,14 @@ const BASE = "/api/v1";
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
     ...options,
   });
+  if (res.status === 401) {
+    // Session expired — reload to trigger auth gate
+    window.location.reload();
+    return undefined as T;
+  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error((err as { error: string }).error || res.statusText);

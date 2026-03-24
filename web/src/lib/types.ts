@@ -85,6 +85,7 @@ export interface SystemStatus {
   version: string;
   db_path?: string;
   started_at?: string;
+  gateway?: string;
   devices_online: number;
   devices_offline: number;
   devices_unknown: number;

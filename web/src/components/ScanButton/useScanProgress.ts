@@ -44,7 +44,7 @@ export function useScanProgress() {
         type: "scan_started",
         message: `${p.type ?? "discovery"} scan started on ${p.target}`,
         timestamp: new Date().toISOString(),
-        scanId: p.id,
+        scan_id: p.id,
       });
     });
 
@@ -84,7 +84,7 @@ export function useScanProgress() {
         type: "device_discovered",
         message: `New device: ${label}`,
         timestamp: new Date().toISOString(),
-        deviceId: device.id,
+        device_id: device.id,
       });
     });
 
@@ -97,7 +97,7 @@ export function useScanProgress() {
           type: "device_offline",
           message: `Device offline: ${label}`,
           timestamp: new Date().toISOString(),
-          deviceId: device.id,
+          device_id: device.id,
         });
       }
     });

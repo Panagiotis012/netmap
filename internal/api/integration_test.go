@@ -27,10 +27,13 @@ func setupTestServer(t *testing.T) *httptest.Server {
 	}
 	t.Cleanup(func() { db.Close() })
 
+	configRepo := sqlite.NewConfigRepo(db)
 	s := &store.Store{
 		Devices:  sqlite.NewDeviceRepo(db),
 		Networks: sqlite.NewNetworkRepo(db),
 		Scans:    sqlite.NewScanRepo(db),
+		Alerts:   sqlite.NewAlertRepo(db),
+		Sessions: sqlite.NewSessionRepo(db),
 	}
 
 	hub := ws.NewHub()
@@ -38,8 +41,10 @@ func setupTestServer(t *testing.T) *httptest.Server {
 	t.Cleanup(func() { hub.Stop() })
 
 	scanHandler := handlers.NewScanHandler(s.Scans)
-	configHandler := handlers.NewConfigHandler(sqlite.NewConfigRepo(db))
-	router := NewRouter(s, hub, scanHandler, configHandler, "test")
+	configHandler := handlers.NewConfigHandler(configRepo)
+	authHandler := handlers.NewAuthHandler(configRepo, s.Sessions)
+	alertHandler := handlers.NewAlertHandler(s.Alerts)
+	router := NewRouter(s, hub, scanHandler, configHandler, authHandler, alertHandler, "test")
 	return httptest.NewServer(router)
 }
 
