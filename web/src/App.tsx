@@ -79,17 +79,8 @@ function AppShell() {
   );
 }
 
-function StatusPageRoute() {
-  return <StatusPage />;
-}
-
 export default function App() {
   const { loading, authenticated, setup, fetchStatus } = useAuthStore();
-
-  // Public status page — no auth needed
-  if (window.location.pathname === "/status") {
-    return <StatusPageRoute />;
-  }
 
   useEffect(() => {
     fetchStatus();
@@ -109,6 +100,11 @@ export default function App() {
         Loading…
       </div>
     );
+  }
+
+  // Public status page — no auth needed
+  if (window.location.pathname === "/status") {
+    return <StatusPage />;
   }
 
   // If auth is configured and user is not authenticated, show login.
