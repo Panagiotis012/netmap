@@ -38,8 +38,7 @@ export const useScanStore = create<ScanState>((set, get) => ({
   popoverMode: null,
 
   fetch: async () => {
-    const r = await fetch("/api/v1/scans");
-    const result = await r.json();
+    const result = await api.scans.list();
     set({ scans: result.items || [] });
   },
 

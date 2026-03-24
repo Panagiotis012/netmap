@@ -14,19 +14,15 @@ interface ScanProgressPayload {
 }
 
 export function useScanProgress() {
-  const setActiveScan = useScanStore((s) => s.setActiveScan);
-  const clearActiveScan = useScanStore((s) => s.clearActiveScan);
-  const setPopover = useScanStore((s) => s.setPopover);
-  const incrementNewDevices = useScanStore((s) => s.incrementNewDevices);
+  // Read actions from deviceStore outside selector to avoid stale-closure lint
   const upsert = useDeviceStore((s) => s.upsert);
-  const fetchScans = useScanStore((s) => s.fetch);
 
   useEffect(() => {
     let dismissTimer: ReturnType<typeof setTimeout> | null = null;
 
     const unsubProgress = wsClient.on("scan.progress", (e) => {
       const p = e.payload as ScanProgressPayload;
-      setActiveScan({
+      useScanStore.getState().setActiveScan({
         hostsScanned: p.hosts_scanned,
         hostsTotal: p.hosts_total,
         hostsFound: p.hosts_found,
@@ -36,19 +32,27 @@ export function useScanProgress() {
     });
 
     const unsubCompleted = wsClient.on("scan.completed", () => {
-      setPopover(true, "complete");
-      fetchScans();
-      // Auto-dismiss after 8s; clear activeScan with the popover so complete
-      // mode can still display the newDevicesCount until then.
+      // Cancel any pending dismiss timer from a previous event before creating a new one
+      if (dismissTimer !== null) clearTimeout(dismissTimer);
+      const store = useScanStore.getState();
+      store.setPopover(true, "complete");
+      // scanning is done — re-enable the button immediately
+      useScanStore.setState({ scanning: false });
+      store.fetch();
+      // Keep activeScan alive so the complete popover can display newDevicesCount.
+      // Clear it after 8s auto-dismiss, but only if still in complete mode.
       dismissTimer = setTimeout(() => {
-        clearActiveScan();
-        setPopover(false, null);
+        if (useScanStore.getState().popoverMode === "complete") {
+          useScanStore.getState().clearActiveScan();
+          useScanStore.getState().setPopover(false, null);
+        }
+        dismissTimer = null;
       }, 8000);
     });
 
     const unsubDiscovered = wsClient.on("device.discovered", (e) => {
       upsert(e.payload as Device);
-      incrementNewDevices();
+      useScanStore.getState().incrementNewDevices();
     });
 
     return () => {
@@ -57,5 +61,5 @@ export function useScanProgress() {
       unsubDiscovered();
       if (dismissTimer !== null) clearTimeout(dismissTimer);
     };
-  }, []);
+  }, [upsert]);
 }

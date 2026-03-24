@@ -55,15 +55,28 @@ describe("useScanProgress", () => {
     expect(state.activeScan?.etaSeconds).toBe(15);
   });
 
-  it("transitions to complete mode on scan.completed event", async () => {
+  it("transitions to complete mode on scan.completed event, keeps activeScan for newDevicesCount display", async () => {
     const { useScanProgress } = await import("./useScanProgress");
     renderHook(() => useScanProgress());
 
     mockHandlers["scan.completed"]?.({ payload: {} });
 
     const state = useScanStore.getState();
-    // activeScan is kept until the 8s auto-dismiss so the popover can display newDevicesCount
     expect(state.popoverMode).toBe("complete");
     expect(state.popoverOpen).toBe(true);
+    // activeScan must survive so complete popover can display newDevicesCount
+    expect(state.activeScan).not.toBeNull();
+    // scanning flag is cleared immediately so the button re-enables
+    expect(state.scanning).toBe(false);
+  });
+
+  it("increments newDevicesCount on device.discovered event", async () => {
+    const { useScanProgress } = await import("./useScanProgress");
+    renderHook(() => useScanProgress());
+
+    mockHandlers["device.discovered"]?.({ payload: { id: "d1", ip: "10.0.0.1" } });
+
+    const state = useScanStore.getState();
+    expect(state.activeScan?.newDevicesCount).toBe(1);
   });
 });
