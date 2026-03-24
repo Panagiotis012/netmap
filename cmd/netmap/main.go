@@ -175,18 +175,20 @@ func main() {
 
 		for _, host := range results.Hosts {
 			var existing *models.Device
-			var findErr error
 			if host.MAC != "" {
-				existing, findErr = s.Devices.GetByMAC(context.Background(), host.MAC)
+				if d, err := s.Devices.GetByMAC(context.Background(), host.MAC); err == nil {
+					existing = d
+				}
 			}
 			if existing == nil && host.Hostname != "" {
-				existing, findErr = s.Devices.GetByHostname(context.Background(), host.Hostname)
+				if d, err := s.Devices.GetByHostname(context.Background(), host.Hostname); err == nil {
+					existing = d
+				}
 			}
 			if existing == nil && host.IP != "" {
-				existing, findErr = s.Devices.GetByIP(context.Background(), host.IP)
-			}
-			if findErr != nil {
-				continue
+				if d, err := s.Devices.GetByIP(context.Background(), host.IP); err == nil {
+					existing = d
+				}
 			}
 			if existing == nil {
 				device := &models.Device{
