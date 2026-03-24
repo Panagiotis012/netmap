@@ -106,4 +106,42 @@ var migrations = []migration{
 		name: "add_devices_latency_ms",
 		sql:  `ALTER TABLE devices ADD COLUMN latency_ms REAL NOT NULL DEFAULT 0`,
 	},
+	{
+		name: "create_monitors",
+		sql: `CREATE TABLE IF NOT EXISTS monitors (
+			id              TEXT PRIMARY KEY,
+			name            TEXT NOT NULL,
+			type            TEXT NOT NULL DEFAULT 'http',
+			url             TEXT NOT NULL DEFAULT '',
+			host            TEXT NOT NULL DEFAULT '',
+			port            INTEGER NOT NULL DEFAULT 0,
+			interval_secs   INTEGER NOT NULL DEFAULT 60,
+			timeout_secs    INTEGER NOT NULL DEFAULT 10,
+			method          TEXT NOT NULL DEFAULT 'GET',
+			expected_status INTEGER NOT NULL DEFAULT 200,
+			keyword         TEXT NOT NULL DEFAULT '',
+			active          INTEGER NOT NULL DEFAULT 1,
+			notify_webhook  TEXT NOT NULL DEFAULT '',
+			status          TEXT NOT NULL DEFAULT 'pending',
+			last_checked_at DATETIME,
+			created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
+	},
+	{
+		name: "create_monitor_checks",
+		sql: `CREATE TABLE IF NOT EXISTS monitor_checks (
+			id                TEXT PRIMARY KEY,
+			monitor_id        TEXT NOT NULL,
+			status            TEXT NOT NULL,
+			response_time_ms  INTEGER NOT NULL DEFAULT 0,
+			status_code       INTEGER NOT NULL DEFAULT 0,
+			error             TEXT NOT NULL DEFAULT '',
+			checked_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (monitor_id) REFERENCES monitors(id) ON DELETE CASCADE
+		)`,
+	},
+	{
+		name: "create_monitor_checks_index",
+		sql:  `CREATE INDEX IF NOT EXISTS idx_monitor_checks_monitor_id ON monitor_checks(monitor_id, checked_at DESC)`,
+	},
 }

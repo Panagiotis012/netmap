@@ -1,4 +1,4 @@
-import type { Device, Network, ScanJob, ScanType, SystemStatus, ListResult } from "./types";
+import type { Device, Network, ScanJob, ScanType, SystemStatus, ListResult, Monitor, MonitorCheck } from "./types";
 
 const BASE = "/api/v1";
 
@@ -52,5 +52,15 @@ export const api = {
   },
   system: {
     status: () => request<SystemStatus>("/system/status"),
+  },
+  monitors: {
+    list: () => request<Monitor[]>("/monitors"),
+    get: (id: string) => request<Monitor>(`/monitors/${id}`),
+    create: (data: Partial<Monitor>) =>
+      request<Monitor>("/monitors", { method: "POST", body: JSON.stringify(data) }),
+    update: (id: string, data: Partial<Monitor>) =>
+      request<Monitor>(`/monitors/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    delete: (id: string) => request<void>(`/monitors/${id}`, { method: "DELETE" }),
+    checks: (id: string) => request<MonitorCheck[]>(`/monitors/${id}/checks`),
   },
 };

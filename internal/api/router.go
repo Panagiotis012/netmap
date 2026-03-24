@@ -17,6 +17,7 @@ func NewRouter(
 	configHandler *handlers.ConfigHandler,
 	authHandler *handlers.AuthHandler,
 	alertHandler *handlers.AlertHandler,
+	monitorHandler *handlers.MonitorHandler,
 	version string,
 ) *chi.Mux {
 	r := chi.NewRouter()
@@ -39,6 +40,9 @@ func NewRouter(
 			r.Post("/login", authHandler.Login)
 			r.Post("/logout", authHandler.Logout)
 		})
+
+		// Public status page
+		r.Get("/status-page", monitorHandler.StatusPage)
 
 		// All other API routes require authentication (when password is set up)
 		r.Group(func(r chi.Router) {
@@ -76,6 +80,17 @@ func NewRouter(
 				r.Post("/", alertHandler.Create)
 				r.Post("/read", alertHandler.MarkRead)
 				r.Delete("/", alertHandler.DeleteAll)
+			})
+
+			r.Route("/monitors", func(r chi.Router) {
+				r.Get("/", monitorHandler.List)
+				r.Post("/", monitorHandler.Create)
+				r.Route("/{id}", func(r chi.Router) {
+					r.Get("/", monitorHandler.Get)
+					r.Put("/", monitorHandler.Update)
+					r.Delete("/", monitorHandler.Delete)
+					r.Get("/checks", monitorHandler.ListChecks)
+				})
 			})
 
 			r.Get("/system/status", system.Status)

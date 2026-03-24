@@ -15,6 +15,9 @@ import { DeviceList } from "./pages/DeviceList";
 import { Settings } from "./pages/Settings";
 import { Alerts } from "./pages/Alerts";
 import { Login } from "./pages/Login";
+import { Monitors } from "./pages/Monitors";
+import { MonitorDetail } from "./pages/MonitorDetail";
+import { StatusPage } from "./pages/StatusPage";
 import { Networks } from "./pages/settings/Networks";
 import { Scanning } from "./pages/settings/Scanning";
 import { General } from "./pages/settings/General";
@@ -61,6 +64,8 @@ function AppShell() {
             <Route path="/devices" element={<DeviceList />} />
             <Route path="/scans" element={<Scans />} />
             <Route path="/alerts" element={<Alerts />} />
+            <Route path="/monitors" element={<Monitors />} />
+            <Route path="/monitors/:id" element={<MonitorDetail />} />
             <Route path="/settings" element={<Settings />}>
               <Route index element={<Networks />} />
               <Route path="scanning" element={<Scanning />} />
@@ -74,8 +79,17 @@ function AppShell() {
   );
 }
 
+function StatusPageRoute() {
+  return <StatusPage />;
+}
+
 export default function App() {
   const { loading, authenticated, setup, fetchStatus } = useAuthStore();
+
+  // Public status page — no auth needed
+  if (window.location.pathname === "/status") {
+    return <StatusPageRoute />;
+  }
 
   useEffect(() => {
     fetchStatus();

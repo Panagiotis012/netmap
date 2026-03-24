@@ -59,10 +59,26 @@ type SessionRepo interface {
 	DeleteExpired(ctx context.Context) error
 }
 
+type MonitorRepo interface {
+	Create(ctx context.Context, m *models.Monitor) error
+	List(ctx context.Context) ([]models.Monitor, error)
+	GetByID(ctx context.Context, id string) (*models.Monitor, error)
+	Update(ctx context.Context, m *models.Monitor) error
+	Delete(ctx context.Context, id string) error
+	UpdateStatus(ctx context.Context, id string, status models.MonitorStatus, lastCheckedAt time.Time) error
+	ListActive(ctx context.Context) ([]models.Monitor, error)
+
+	CreateCheck(ctx context.Context, c *models.MonitorCheck) error
+	ListChecks(ctx context.Context, monitorID string, limit int) ([]models.MonitorCheck, error)
+	DeleteOldChecks(ctx context.Context, monitorID string, keepCount int) error
+	UptimePercent(ctx context.Context, monitorID string, since time.Time) (float64, error)
+}
+
 type Store struct {
 	Devices  DeviceRepo
 	Networks NetworkRepo
 	Scans    ScanRepo
 	Alerts   AlertRepo
 	Sessions SessionRepo
+	Monitors MonitorRepo
 }
