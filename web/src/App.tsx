@@ -9,6 +9,11 @@ import { useDeviceStore } from "./stores/deviceStore";
 import { useUIStore } from "./stores/uiStore";
 import { wsClient } from "./lib/ws";
 import type { Device } from "./lib/types";
+import { Scans } from "./pages/Scans";
+import { Settings } from "./pages/Settings";
+import { Networks } from "./pages/settings/Networks";
+import { Scanning } from "./pages/settings/Scanning";
+import { General } from "./pages/settings/General";
 
 function MapView() {
   const panelOpen = useUIStore((s) => s.panelOpen);
@@ -30,13 +35,6 @@ function DeviceListPage() {
   return <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#71717a" }}>Device List (Task 22)</div>;
 }
 
-function ScansPage() {
-  return <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#71717a" }}>Scans</div>;
-}
-
-function SettingsPage() {
-  return <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#71717a" }}>Settings</div>;
-}
 
 export default function App() {
   const fetchDevices = useDeviceStore((s) => s.fetch);
@@ -65,9 +63,13 @@ export default function App() {
             <Routes>
               <Route path="/" element={<MapView />} />
               <Route path="/devices" element={<DeviceListPage />} />
-              <Route path="/scans" element={<ScansPage />} />
+              <Route path="/scans" element={<Scans />} />
               <Route path="/alerts" element={<div style={{ padding: "32px", color: "#71717a" }}>Alerts — Phase 2</div>} />
-              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/settings" element={<Settings />}>
+                <Route index element={<Networks />} />
+                <Route path="scanning" element={<Scanning />} />
+                <Route path="general" element={<General />} />
+              </Route>
             </Routes>
           </main>
           <CommandPalette />
