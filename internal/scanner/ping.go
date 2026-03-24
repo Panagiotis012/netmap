@@ -3,10 +3,19 @@ package scanner
 import (
 	"context"
 	"net"
+	"os/exec"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"time"
 )
+
+// probePorts are checked in order; first success marks the host as alive.
+var probePorts = []string{
+	":80", ":443", ":22", ":445",
+	":8080", ":8443", ":23", ":21",
+	":53", ":3389", ":5900", ":7547",
+}
 
 func (p *NetworkProber) PingSweep(ctx context.Context, hosts []string, progress ProgressFunc) ([]PingResult, error) {
 	var mu sync.Mutex
@@ -28,28 +37,9 @@ func (p *NetworkProber) PingSweep(ctx context.Context, hosts []string, progress 
 			defer wg.Done()
 			defer func() { <-sem }()
 
-			alive := false
-			latency := float64(0)
-
-			start := time.Now()
-			conn, err := net.DialTimeout("tcp", ip+":80", p.timeout)
-			if err == nil {
-				conn.Close()
-				alive = true
-				latency = float64(time.Since(start).Microseconds()) / 1000.0
-			}
-
+			alive, latency := tcpProbe(ip, p.timeout)
 			if !alive {
-				for _, port := range []string{":443", ":22", ":445"} {
-					start = time.Now()
-					conn, err := net.DialTimeout("tcp", ip+port, p.timeout)
-					if err == nil {
-						conn.Close()
-						alive = true
-						latency = float64(time.Since(start).Microseconds()) / 1000.0
-						break
-					}
-				}
+				alive, latency = icmpPing(ip)
 			}
 
 			if alive {
@@ -71,4 +61,36 @@ func (p *NetworkProber) PingSweep(ctx context.Context, hosts []string, progress 
 
 	wg.Wait()
 	return results, nil
+}
+
+// tcpProbe tries common TCP ports to determine if a host is reachable.
+func tcpProbe(ip string, timeout time.Duration) (alive bool, latencyMs float64) {
+	for _, port := range probePorts {
+		start := time.Now()
+		conn, err := net.DialTimeout("tcp", ip+port, timeout)
+		if err == nil {
+			conn.Close()
+			return true, float64(time.Since(start).Microseconds()) / 1000.0
+		}
+	}
+	return false, 0
+}
+
+// icmpPing uses the OS ping command as an unprivileged ICMP fallback.
+func icmpPing(ip string) (alive bool, latencyMs float64) {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("ping", "-c", "1", "-W", "1000", "-t", "2", ip)
+	case "linux":
+		cmd = exec.Command("ping", "-c", "1", "-W", "1", ip)
+	default:
+		return false, 0
+	}
+
+	start := time.Now()
+	if err := cmd.Run(); err != nil {
+		return false, 0
+	}
+	return true, float64(time.Since(start).Microseconds()) / 1000.0
 }
