@@ -56,10 +56,11 @@ export const useScanStore = create<ScanState>((set, get) => ({
   },
 
   startScan: async (networkSubnet) => {
-    const data = await api.scans.trigger("discovery", networkSubnet);
+    // Initialize immediately so WS progress/completed events that arrive
+    // during the HTTP roundtrip land on a non-null activeScan.
     set({
       activeScan: {
-        id: data.id,
+        id: "",
         target: networkSubnet,
         hostsScanned: 0,
         hostsTotal: 0,
@@ -72,6 +73,17 @@ export const useScanStore = create<ScanState>((set, get) => ({
       popoverMode: "progress",
       scanning: true,
     });
+    try {
+      const data = await api.scans.trigger("discovery", networkSubnet);
+      // Patch in the real scan ID; don't override popoverMode — the scan may
+      // have already completed via WS before this response arrived.
+      set((s) => ({
+        activeScan: s.activeScan ? { ...s.activeScan, id: data.id } : null,
+      }));
+    } catch (e) {
+      set({ activeScan: null, popoverOpen: false, popoverMode: null, scanning: false });
+      throw e;
+    }
   },
 
   cancelScan: async () => {
