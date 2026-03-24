@@ -21,6 +21,7 @@ class WebSocketClient {
     this.ws.onmessage = (event) => {
       try {
         const data: WSEvent = JSON.parse(event.data as string);
+        console.log("[ws] received:", data.type, data.payload);
         const handlers = this.handlers.get(data.type);
         if (handlers) handlers.forEach((h) => h(data));
         const all = this.handlers.get("*");
