@@ -229,7 +229,7 @@ func main() {
 	scanHandler := handlers.NewScanHandler(s.Scans)
 	scanHandler.ScanTrigger = runScan
 	configHandler := handlers.NewConfigHandler(configRepo)
-	router := api.NewRouter(s, hub, scanHandler, configHandler)
+	router := api.NewRouter(s, hub, scanHandler, configHandler, version)
 	router.Handle("/*", staticHandler())
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", cfg.Port),

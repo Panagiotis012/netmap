@@ -60,16 +60,19 @@ func (s *Scanner) Scan(ctx context.Context, subnet string, mode models.ScanType,
 		return nil, err
 	}
 
-	// Merge ping latency into hosts
+	// Keep only hosts that responded; copy latency from ping results.
 	pingMap := make(map[string]PingResult)
 	for _, p := range pingResults {
 		pingMap[p.IP] = p
 	}
-	for i := range hosts {
-		if p, ok := pingMap[hosts[i].IP]; ok {
-			hosts[i].LatencyMs = p.LatencyMs
+	alive := hosts[:0]
+	for _, h := range hosts {
+		if p, ok := pingMap[h.IP]; ok {
+			h.LatencyMs = p.LatencyMs
+			alive = append(alive, h)
 		}
 	}
+	hosts = alive
 
 	// Step 3: Port scan (port and full modes)
 	if mode == models.ScanPort || mode == models.ScanFull {

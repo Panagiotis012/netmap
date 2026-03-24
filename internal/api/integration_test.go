@@ -39,7 +39,7 @@ func setupTestServer(t *testing.T) *httptest.Server {
 
 	scanHandler := handlers.NewScanHandler(s.Scans)
 	configHandler := handlers.NewConfigHandler(sqlite.NewConfigRepo(db))
-	router := NewRouter(s, hub, scanHandler, configHandler)
+	router := NewRouter(s, hub, scanHandler, configHandler, "test")
 	return httptest.NewServer(router)
 }
 
