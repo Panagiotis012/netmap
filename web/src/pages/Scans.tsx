@@ -53,8 +53,8 @@ function ScanRow({ scan }: { scan: ScanJob }) {
                 </tr>
               </thead>
               <tbody>
-                {scan.results.hosts.map((host, i) => (
-                  <tr key={i} style={{ borderBottom: "1px solid #1e2130" }}>
+                {scan.results.hosts.map((host) => (
+                  <tr key={host.ip} style={{ borderBottom: "1px solid #1e2130" }}>
                     <td style={{ padding: "4px 8px", color: "#e4e4e7" }}>{host.ip}</td>
                     <td style={{ padding: "4px 8px", color: "#71717a" }}>{host.mac || "—"}</td>
                     <td style={{ padding: "4px 8px", color: "#a1a1aa" }}>{host.hostname || "—"}</td>
@@ -83,22 +83,35 @@ export function Scans() {
   const fetchNetworks = useNetworkStore((s) => s.fetch);
 
   const [scanType, setScanType] = useState<ScanType>("discovery");
-  const [target, setTarget] = useState("");
+  // selectTarget: the value from the network dropdown ("" = custom)
+  const [selectTarget, setSelectTarget] = useState("");
+  // customSubnet: text typed when "Custom..." is selected
+  const [customSubnet, setCustomSubnet] = useState("");
+  const [runError, setRunError] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 20;
 
   useEffect(() => {
     fetchScans();
     fetchNetworks();
-  }, []);
+  }, [fetchScans, fetchNetworks]);
+
+  const effectiveTarget = selectTarget !== "" ? selectTarget : customSubnet;
 
   const handleRun = async () => {
-    const t = target || networks[0]?.subnet;
+    const t = effectiveTarget || networks[0]?.subnet;
     if (!t) return;
-    await triggerScan(scanType, t);
-    fetchScans();
+    setRunError(null);
+    try {
+      await triggerScan(scanType, t);
+      fetchScans();
+    } catch (err) {
+      setRunError(err instanceof Error ? err.message : "Scan failed");
+    }
   };
 
-  // Simple pagination — show last 20
-  const page = scans.slice(0, 20);
+  const totalPages = Math.ceil(scans.length / PAGE_SIZE);
+  const pageItems = scans.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   return (
     <div style={{ padding: "24px", flex: 1, overflow: "auto" }}>
@@ -109,8 +122,8 @@ export function Scans() {
         <div>
           <label style={{ display: "block", fontSize: "11px", color: "#71717a", marginBottom: "4px" }}>Network / Target</label>
           <select
-            value={target}
-            onChange={(e) => setTarget(e.target.value)}
+            value={selectTarget}
+            onChange={(e) => setSelectTarget(e.target.value)}
             style={{ background: "#0f1117", border: "1px solid #2a2e3a", borderRadius: "6px", color: "#e4e4e7", padding: "6px 10px", fontSize: "13px" }}
           >
             {networks.map((n) => (
@@ -119,13 +132,14 @@ export function Scans() {
             <option value="">Custom...</option>
           </select>
         </div>
-        {target === "" && (
+        {selectTarget === "" && (
           <div>
             <label style={{ display: "block", fontSize: "11px", color: "#71717a", marginBottom: "4px" }}>Subnet</label>
             <input
               type="text"
+              value={customSubnet}
               placeholder="192.168.1.0/24"
-              onChange={(e) => setTarget(e.target.value)}
+              onChange={(e) => setCustomSubnet(e.target.value)}
               style={{ background: "#0f1117", border: "1px solid #2a2e3a", borderRadius: "6px", color: "#e4e4e7", padding: "6px 10px", fontSize: "13px" }}
             />
           </div>
@@ -142,13 +156,16 @@ export function Scans() {
             <option value="full">Full</option>
           </select>
         </div>
-        <button
-          onClick={handleRun}
-          disabled={scanning}
-          style={{ padding: "7px 16px", borderRadius: "6px", border: "none", background: scanning ? "#2a2e3a" : "#2dd4bf", color: scanning ? "#71717a" : "#0f1117", cursor: scanning ? "not-allowed" : "pointer", fontWeight: 600, fontSize: "13px" }}
-        >
-          {scanning ? "Running..." : "Run Scan"}
-        </button>
+        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+          <button
+            onClick={handleRun}
+            disabled={scanning}
+            style={{ padding: "7px 16px", borderRadius: "6px", border: "none", background: scanning ? "#2a2e3a" : "#2dd4bf", color: scanning ? "#71717a" : "#0f1117", cursor: scanning ? "not-allowed" : "pointer", fontWeight: 600, fontSize: "13px" }}
+          >
+            {scanning ? "Running..." : "Run Scan"}
+          </button>
+          {runError && <span style={{ fontSize: "11px", color: "#ef4444" }}>{runError}</span>}
+        </div>
       </div>
 
       {/* History table */}
@@ -162,14 +179,33 @@ export function Scans() {
             </tr>
           </thead>
           <tbody>
-            {page.length === 0 ? (
+            {pageItems.length === 0 ? (
               <tr><td colSpan={6} style={{ padding: "32px", textAlign: "center", color: "#71717a", fontSize: "13px" }}>No scans yet</td></tr>
             ) : (
-              page.map((scan) => <ScanRow key={scan.id} scan={scan} />)
+              pageItems.map((scan) => <ScanRow key={scan.id} scan={scan} />)
             )}
           </tbody>
         </table>
       </div>
+      {totalPages > 1 && (
+        <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: "12px", alignItems: "center" }}>
+          <button
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            disabled={page === 0}
+            style={{ padding: "4px 10px", borderRadius: "5px", border: "1px solid #2a2e3a", background: "transparent", color: page === 0 ? "#71717a" : "#a1a1aa", cursor: page === 0 ? "not-allowed" : "pointer", fontSize: "12px" }}
+          >
+            ← Prev
+          </button>
+          <span style={{ fontSize: "12px", color: "#71717a" }}>{page + 1} / {totalPages}</span>
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+            disabled={page >= totalPages - 1}
+            style={{ padding: "4px 10px", borderRadius: "5px", border: "1px solid #2a2e3a", background: "transparent", color: page >= totalPages - 1 ? "#71717a" : "#a1a1aa", cursor: page >= totalPages - 1 ? "not-allowed" : "pointer", fontSize: "12px" }}
+          >
+            Next →
+          </button>
+        </div>
+      )}
     </div>
   );
 }
