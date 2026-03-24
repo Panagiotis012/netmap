@@ -10,6 +10,7 @@ import { useUIStore } from "./stores/uiStore";
 import { wsClient } from "./lib/ws";
 import type { Device } from "./lib/types";
 import { Scans } from "./pages/Scans";
+import { DeviceList } from "./pages/DeviceList";
 import { Settings } from "./pages/Settings";
 import { Networks } from "./pages/settings/Networks";
 import { Scanning } from "./pages/settings/Scanning";
@@ -29,10 +30,6 @@ function MapView() {
       )}
     </div>
   );
-}
-
-function DeviceListPage() {
-  return <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#71717a" }}>Device List (Task 22)</div>;
 }
 
 
@@ -62,7 +59,7 @@ export default function App() {
           <main style={{ flex: 1, overflow: "hidden", display: "flex" }}>
             <Routes>
               <Route path="/" element={<MapView />} />
-              <Route path="/devices" element={<DeviceListPage />} />
+              <Route path="/devices" element={<DeviceList />} />
               <Route path="/scans" element={<Scans />} />
               <Route path="/alerts" element={<div style={{ padding: "32px", color: "#71717a" }}>Alerts — Phase 2</div>} />
               <Route path="/settings" element={<Settings />}>
