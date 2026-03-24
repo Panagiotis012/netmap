@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -38,13 +37,28 @@ func Open(dbPath string) (*DB, error) {
 }
 
 func (db *DB) migrate() error {
-	for _, m := range migrations {
-		if _, err := db.Exec(m); err != nil {
-			// Ignore "duplicate column name" errors from ADD COLUMN on existing DBs.
-			if strings.Contains(err.Error(), "duplicate column name") {
-				continue
-			}
-			return fmt.Errorf("migration failed: %w\nSQL: %s", err, m)
+	// Ensure the migrations tracking table exists.
+	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS schema_migrations (
+		version     INTEGER PRIMARY KEY,
+		applied_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	)`); err != nil {
+		return fmt.Errorf("create schema_migrations: %w", err)
+	}
+
+	// Find the highest version already applied.
+	var maxVersion int
+	_ = db.QueryRow(`SELECT COALESCE(MAX(version), 0) FROM schema_migrations`).Scan(&maxVersion)
+
+	for i, m := range migrations {
+		version := i + 1
+		if version <= maxVersion {
+			continue // already applied
+		}
+		if _, err := db.Exec(m.sql); err != nil {
+			return fmt.Errorf("migration v%d (%s) failed: %w", version, m.name, err)
+		}
+		if _, err := db.Exec(`INSERT INTO schema_migrations (version) VALUES (?)`, version); err != nil {
+			return fmt.Errorf("record migration v%d: %w", version, err)
 		}
 	}
 	return nil

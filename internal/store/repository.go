@@ -4,6 +4,7 @@ package store
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/netmap/netmap/internal/core/models"
 )
@@ -42,8 +43,26 @@ type ScanRepo interface {
 	DeleteOlderThan(ctx context.Context, keepCount int) error
 }
 
+type AlertRepo interface {
+	Create(ctx context.Context, alert *models.Alert) error
+	List(ctx context.Context, limit int) ([]models.Alert, error)
+	MarkAllRead(ctx context.Context) error
+	DeleteAll(ctx context.Context) error
+	UnreadCount(ctx context.Context) (int, error)
+	Trim(ctx context.Context, keep int) error
+}
+
+type SessionRepo interface {
+	Create(ctx context.Context, token string, ttl time.Duration) error
+	Validate(ctx context.Context, token string) (bool, error)
+	Delete(ctx context.Context, token string) error
+	DeleteExpired(ctx context.Context) error
+}
+
 type Store struct {
 	Devices  DeviceRepo
 	Networks NetworkRepo
 	Scans    ScanRepo
+	Alerts   AlertRepo
+	Sessions SessionRepo
 }

@@ -5,6 +5,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/netmap/netmap/internal/scanner"
 	"github.com/netmap/netmap/internal/store"
 )
 
@@ -25,6 +26,7 @@ func (h *SystemHandler) Status(w http.ResponseWriter, r *http.Request) {
 		"version":         h.version,
 		"go_version":      runtime.Version(),
 		"started_at":      h.startedAt.UTC().Format(time.RFC3339),
+		"gateway":         scanner.DefaultGateway(),
 		"devices_online":  online,
 		"devices_offline": offline,
 		"devices_unknown": unknown,
