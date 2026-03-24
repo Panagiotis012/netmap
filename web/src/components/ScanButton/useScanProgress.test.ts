@@ -31,7 +31,9 @@ beforeEach(() => {
     popoverOpen: true,
     popoverMode: "progress",
     scanning: true,
-  });
+    // Override fetch to avoid real API calls
+    fetch: vi.fn(),
+  } as any);
 });
 
 describe("useScanProgress", () => {
@@ -53,14 +55,15 @@ describe("useScanProgress", () => {
     expect(state.activeScan?.etaSeconds).toBe(15);
   });
 
-  it("clears activeScan and transitions to complete mode on scan.completed event", async () => {
+  it("transitions to complete mode on scan.completed event", async () => {
     const { useScanProgress } = await import("./useScanProgress");
     renderHook(() => useScanProgress());
 
     mockHandlers["scan.completed"]?.({ payload: {} });
 
     const state = useScanStore.getState();
-    expect(state.activeScan).toBeNull();
+    // activeScan is kept until the 8s auto-dismiss so the popover can display newDevicesCount
     expect(state.popoverMode).toBe("complete");
+    expect(state.popoverOpen).toBe(true);
   });
 });

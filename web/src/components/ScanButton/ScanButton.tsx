@@ -1,6 +1,5 @@
 import { useNetworkStore } from "../../stores/networkStore";
 import { useScanStore } from "../../stores/scanStore";
-import { Zap } from "lucide-react";
 import { useToast } from "../Toast/ToastProvider";
 
 export function ScanButton() {
@@ -42,8 +41,7 @@ export function ScanButton() {
         transition: "all 0.15s",
       }}
     >
-      <Zap size={14} strokeWidth={2} />
-      {scanning ? "Scanning..." : "Scan Now"}
+      {scanning ? "Scanning..." : "⚡ Scan Now"}
     </button>
   );
 }

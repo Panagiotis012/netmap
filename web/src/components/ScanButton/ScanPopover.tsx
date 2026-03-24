@@ -7,6 +7,7 @@ export function ScanPopover() {
   const popoverOpen = useScanStore((s) => s.popoverOpen);
   const popoverMode = useScanStore((s) => s.popoverMode);
   const cancelScan = useScanStore((s) => s.cancelScan);
+  const clearActiveScan = useScanStore((s) => s.clearActiveScan);
   const setPopover = useScanStore((s) => s.setPopover);
   const navigate = useNavigate();
 
@@ -66,7 +67,7 @@ export function ScanPopover() {
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
           <span style={{ fontSize: "13px", fontWeight: 600, color: "#f4f4f5" }}>✓ Scan complete</span>
-          <button onClick={() => setPopover(false, null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#71717a" }}>
+          <button onClick={() => { clearActiveScan(); setPopover(false, null); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#71717a" }}>
             <X size={14} />
           </button>
         </div>
@@ -76,7 +77,7 @@ export function ScanPopover() {
           </div>
         )}
         <button
-          onClick={() => { setPopover(false, null); navigate("/scans"); }}
+          onClick={() => { clearActiveScan(); setPopover(false, null); navigate("/scans"); }}
           style={{ background: "none", border: "none", cursor: "pointer", color: "#2dd4bf", fontSize: "12px", padding: 0 }}
         >
           δες ιστορικό →

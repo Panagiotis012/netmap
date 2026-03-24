@@ -22,6 +22,8 @@ export function useScanProgress() {
   const fetchScans = useScanStore((s) => s.fetch);
 
   useEffect(() => {
+    let dismissTimer: ReturnType<typeof setTimeout> | null = null;
+
     const unsubProgress = wsClient.on("scan.progress", (e) => {
       const p = e.payload as ScanProgressPayload;
       setActiveScan({
@@ -35,10 +37,13 @@ export function useScanProgress() {
 
     const unsubCompleted = wsClient.on("scan.completed", () => {
       setPopover(true, "complete");
-      clearActiveScan();
       fetchScans();
-      // Auto-dismiss after 8s
-      setTimeout(() => setPopover(false, null), 8000);
+      // Auto-dismiss after 8s; clear activeScan with the popover so complete
+      // mode can still display the newDevicesCount until then.
+      dismissTimer = setTimeout(() => {
+        clearActiveScan();
+        setPopover(false, null);
+      }, 8000);
     });
 
     const unsubDiscovered = wsClient.on("device.discovered", (e) => {
@@ -50,6 +55,7 @@ export function useScanProgress() {
       unsubProgress();
       unsubCompleted();
       unsubDiscovered();
+      if (dismissTimer !== null) clearTimeout(dismissTimer);
     };
   }, []);
 }
