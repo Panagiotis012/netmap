@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -39,6 +40,10 @@ func Open(dbPath string) (*DB, error) {
 func (db *DB) migrate() error {
 	for _, m := range migrations {
 		if _, err := db.Exec(m); err != nil {
+			// Ignore "duplicate column name" errors from ADD COLUMN on existing DBs.
+			if strings.Contains(err.Error(), "duplicate column name") {
+				continue
+			}
 			return fmt.Errorf("migration failed: %w\nSQL: %s", err, m)
 		}
 	}

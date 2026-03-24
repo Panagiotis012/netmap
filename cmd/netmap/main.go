@@ -189,6 +189,7 @@ func main() {
 					FirstSeenAt:     now,
 					LastSeenAt:      now,
 					Tags:            []string{},
+					Ports:           host.Ports,
 				}
 				s.Devices.Create(context.Background(), device)
 				bus.Publish(models.Event{Type: models.EventDeviceDiscovered, Payload: device, Timestamp: now})
@@ -201,6 +202,9 @@ func main() {
 				// MAC fix: only append if not already present
 				if host.MAC != "" && !contains(existing.MACAddresses, host.MAC) {
 					existing.MACAddresses = append(existing.MACAddresses, host.MAC)
+				}
+				if len(host.Ports) > 0 {
+					existing.Ports = host.Ports
 				}
 				s.Devices.Update(context.Background(), existing)
 				bus.Publish(models.Event{Type: models.EventDeviceUpdated, Payload: existing, Timestamp: now})

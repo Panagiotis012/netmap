@@ -43,4 +43,5 @@ var migrations = []string{
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL
 )`,
+	`ALTER TABLE devices ADD COLUMN ports TEXT NOT NULL DEFAULT '[]'`,
 }

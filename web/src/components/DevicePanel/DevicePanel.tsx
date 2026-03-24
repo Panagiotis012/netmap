@@ -65,6 +65,29 @@ export function DevicePanel() {
         <DeviceInfo label="Discovered" value={device.discovery_method} />
       </div>
 
+      {device.ports && device.ports.length > 0 && (
+        <div style={{ marginBottom: "16px" }}>
+          <span style={{ color: "#71717a", fontSize: "12px", display: "block", marginBottom: "6px" }}>
+            Open Ports <span style={{ color: "#52525b" }}>({device.ports.length})</span>
+          </span>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+            {device.ports.map((p) => (
+              <span
+                key={`${p.number}/${p.protocol}`}
+                title={p.service || undefined}
+                style={{
+                  background: "#1e2130", border: "1px solid #2a2e3a", borderRadius: "4px",
+                  padding: "2px 6px", fontSize: "11px", fontFamily: "monospace", color: "#a1a1aa",
+                }}
+              >
+                {p.number}/{p.protocol}
+                {p.service && <span style={{ color: "#71717a" }}> {p.service}</span>}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div>
         <span style={{ color: "#71717a", fontSize: "12px", display: "block", marginBottom: "6px" }}>Tags</span>
         <TagEditor tags={device.tags} onChange={updateTags} />
