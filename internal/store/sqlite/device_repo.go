@@ -24,47 +24,48 @@ func (r *DeviceRepo) Create(ctx context.Context, d *models.Device) error {
 	ips, _ := json.Marshal(d.IPAddresses)
 	macs, _ := json.Marshal(d.MACAddresses)
 	tags, _ := json.Marshal(d.Tags)
+	ports, _ := json.Marshal(d.Ports)
 	meta := d.Metadata
 	if meta == nil {
 		meta = json.RawMessage("{}")
 	}
 
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO devices (id, hostname, ip_addresses, mac_addresses, os, status, discovery_method, first_seen_at, last_seen_at, tags, group_id, metadata, map_x, map_y, network_id)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO devices (id, hostname, ip_addresses, mac_addresses, os, status, discovery_method, first_seen_at, last_seen_at, tags, ports, latency_ms, group_id, metadata, map_x, map_y, network_id)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		d.ID, d.Hostname, string(ips), string(macs), d.OS, d.Status, d.DiscoveryMethod,
-		d.FirstSeenAt, d.LastSeenAt, string(tags), d.GroupID, string(meta), d.MapX, d.MapY, d.NetworkID,
+		d.FirstSeenAt, d.LastSeenAt, string(tags), string(ports), d.LatencyMs, d.GroupID, string(meta), d.MapX, d.MapY, d.NetworkID,
 	)
 	return err
 }
 
 func (r *DeviceRepo) GetByID(ctx context.Context, id string) (*models.Device, error) {
 	return r.scanDevice(r.db.QueryRowContext(ctx,
-		`SELECT id, hostname, ip_addresses, mac_addresses, os, status, discovery_method, first_seen_at, last_seen_at, tags, group_id, metadata, map_x, map_y, network_id FROM devices WHERE id = ?`, id))
+		`SELECT id, hostname, ip_addresses, mac_addresses, os, status, discovery_method, first_seen_at, last_seen_at, tags, ports, latency_ms, group_id, metadata, map_x, map_y, network_id FROM devices WHERE id = ?`, id))
 }
 
 func (r *DeviceRepo) GetByMAC(ctx context.Context, mac string) (*models.Device, error) {
 	return r.scanDevice(r.db.QueryRowContext(ctx,
-		`SELECT id, hostname, ip_addresses, mac_addresses, os, status, discovery_method, first_seen_at, last_seen_at, tags, group_id, metadata, map_x, map_y, network_id FROM devices WHERE mac_addresses LIKE ?`,
+		`SELECT id, hostname, ip_addresses, mac_addresses, os, status, discovery_method, first_seen_at, last_seen_at, tags, ports, latency_ms, group_id, metadata, map_x, map_y, network_id FROM devices WHERE mac_addresses LIKE ?`,
 		fmt.Sprintf("%%%s%%", mac)))
 }
 
 func (r *DeviceRepo) GetByHostname(ctx context.Context, hostname string) (*models.Device, error) {
 	return r.scanDevice(r.db.QueryRowContext(ctx,
-		`SELECT id, hostname, ip_addresses, mac_addresses, os, status, discovery_method, first_seen_at, last_seen_at, tags, group_id, metadata, map_x, map_y, network_id FROM devices WHERE hostname = ?`, hostname))
+		`SELECT id, hostname, ip_addresses, mac_addresses, os, status, discovery_method, first_seen_at, last_seen_at, tags, ports, latency_ms, group_id, metadata, map_x, map_y, network_id FROM devices WHERE hostname = ?`, hostname))
 }
 
 func (r *DeviceRepo) GetByIP(ctx context.Context, ip string) (*models.Device, error) {
 	return r.scanDevice(r.db.QueryRowContext(ctx,
-		`SELECT id, hostname, ip_addresses, mac_addresses, os, status, discovery_method, first_seen_at, last_seen_at, tags, group_id, metadata, map_x, map_y, network_id FROM devices WHERE ip_addresses LIKE ?`,
+		`SELECT id, hostname, ip_addresses, mac_addresses, os, status, discovery_method, first_seen_at, last_seen_at, tags, ports, latency_ms, group_id, metadata, map_x, map_y, network_id FROM devices WHERE ip_addresses LIKE ?`,
 		fmt.Sprintf("%%%s%%", ip)))
 }
 
 func (r *DeviceRepo) scanDevice(row *sql.Row) (*models.Device, error) {
 	var d models.Device
-	var ips, macs, tags, meta string
+	var ips, macs, tags, ports, meta string
 	err := row.Scan(&d.ID, &d.Hostname, &ips, &macs, &d.OS, &d.Status, &d.DiscoveryMethod,
-		&d.FirstSeenAt, &d.LastSeenAt, &tags, &d.GroupID, &meta, &d.MapX, &d.MapY, &d.NetworkID)
+		&d.FirstSeenAt, &d.LastSeenAt, &tags, &ports, &d.LatencyMs, &d.GroupID, &meta, &d.MapX, &d.MapY, &d.NetworkID)
 	if err == sql.ErrNoRows {
 		return nil, store.ErrNotFound
 	}
@@ -79,6 +80,9 @@ func (r *DeviceRepo) scanDevice(row *sql.Row) (*models.Device, error) {
 	}
 	if err := json.Unmarshal([]byte(tags), &d.Tags); err != nil {
 		return nil, fmt.Errorf("unmarshal tags: %w", err)
+	}
+	if ports != "" && ports != "null" {
+		_ = json.Unmarshal([]byte(ports), &d.Ports)
 	}
 	d.Metadata = json.RawMessage(meta)
 	return &d, nil
@@ -128,7 +132,7 @@ func (r *DeviceRepo) List(ctx context.Context, params models.ListParams) (*model
 	}
 	offset := (page - 1) * limit
 
-	query := fmt.Sprintf("SELECT id, hostname, ip_addresses, mac_addresses, os, status, discovery_method, first_seen_at, last_seen_at, tags, group_id, metadata, map_x, map_y, network_id FROM devices WHERE %s ORDER BY %s %s LIMIT ? OFFSET ?",
+	query := fmt.Sprintf("SELECT id, hostname, ip_addresses, mac_addresses, os, status, discovery_method, first_seen_at, last_seen_at, tags, ports, latency_ms, group_id, metadata, map_x, map_y, network_id FROM devices WHERE %s ORDER BY %s %s LIMIT ? OFFSET ?",
 		whereClause, sort, order)
 	args = append(args, limit, offset)
 
@@ -141,9 +145,9 @@ func (r *DeviceRepo) List(ctx context.Context, params models.ListParams) (*model
 	var devices []models.Device
 	for rows.Next() {
 		var d models.Device
-		var ips, macs, tags, meta string
+		var ips, macs, tags, ports, meta string
 		if err := rows.Scan(&d.ID, &d.Hostname, &ips, &macs, &d.OS, &d.Status, &d.DiscoveryMethod,
-			&d.FirstSeenAt, &d.LastSeenAt, &tags, &d.GroupID, &meta, &d.MapX, &d.MapY, &d.NetworkID); err != nil {
+			&d.FirstSeenAt, &d.LastSeenAt, &tags, &ports, &d.LatencyMs, &d.GroupID, &meta, &d.MapX, &d.MapY, &d.NetworkID); err != nil {
 			return nil, err
 		}
 		if err := json.Unmarshal([]byte(ips), &d.IPAddresses); err != nil {
@@ -154,6 +158,9 @@ func (r *DeviceRepo) List(ctx context.Context, params models.ListParams) (*model
 		}
 		if err := json.Unmarshal([]byte(tags), &d.Tags); err != nil {
 			return nil, fmt.Errorf("unmarshal tags: %w", err)
+		}
+		if ports != "" && ports != "null" {
+			_ = json.Unmarshal([]byte(ports), &d.Ports)
 		}
 		d.Metadata = json.RawMessage(meta)
 		devices = append(devices, d)
@@ -172,15 +179,16 @@ func (r *DeviceRepo) Update(ctx context.Context, d *models.Device) error {
 	ips, _ := json.Marshal(d.IPAddresses)
 	macs, _ := json.Marshal(d.MACAddresses)
 	tags, _ := json.Marshal(d.Tags)
+	ports, _ := json.Marshal(d.Ports)
 	meta := d.Metadata
 	if meta == nil {
 		meta = json.RawMessage("{}")
 	}
 
 	_, err := r.db.ExecContext(ctx,
-		`UPDATE devices SET hostname=?, ip_addresses=?, mac_addresses=?, os=?, status=?, last_seen_at=?, tags=?, group_id=?, metadata=?, map_x=?, map_y=?, network_id=? WHERE id=?`,
+		`UPDATE devices SET hostname=?, ip_addresses=?, mac_addresses=?, os=?, status=?, last_seen_at=?, tags=?, ports=?, latency_ms=?, group_id=?, metadata=?, map_x=?, map_y=?, network_id=? WHERE id=?`,
 		d.Hostname, string(ips), string(macs), d.OS, d.Status, d.LastSeenAt,
-		string(tags), d.GroupID, string(meta), d.MapX, d.MapY, d.NetworkID, d.ID,
+		string(tags), string(ports), d.LatencyMs, d.GroupID, string(meta), d.MapX, d.MapY, d.NetworkID, d.ID,
 	)
 	return err
 }

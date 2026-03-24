@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import cytoscape from "cytoscape";
 import { useDeviceStore } from "../../stores/deviceStore";
 import { mapStylesheet } from "./mapStyles";
@@ -66,23 +66,43 @@ export function NetworkMap() {
     });
 
     if (devices.length > 1) {
-      const center = devices[0];
-      devices.slice(1).forEach((d) => {
-        const edgeId = `${center.id}-${d.id}`;
+      // Use the likely gateway (lowest host number in each subnet, typically .1)
+      // as the hub node. Fall back to devices[0] if nothing qualifies.
+      const gateway = devices.find((d) =>
+        d.ip_addresses.some((ip) => ip.endsWith(".1") || ip.endsWith(".254"))
+      ) ?? devices[0];
+
+      devices.forEach((d) => {
+        if (d.id === gateway.id) return;
+        const edgeId = `${gateway.id}-${d.id}`;
         if (!cy.getElementById(edgeId).length) {
           cy.add({
             group: "edges",
-            data: { id: edgeId, source: center.id, target: d.id, status: d.status },
+            data: { id: edgeId, source: gateway.id, target: d.id, status: d.status },
           });
         }
       });
     }
   }, [devices]);
 
+  const fitToView = useCallback(() => {
+    cyRef.current?.fit(undefined, 60);
+  }, []);
+
   return (
-    <div
-      ref={containerRef}
-      style={{ width: "100%", height: "100%", background: "#0f1117" }}
-    />
+    <div style={{ position: "relative", width: "100%", height: "100%" }}>
+      <div ref={containerRef} style={{ width: "100%", height: "100%", background: "#0f1117" }} />
+      <button
+        onClick={fitToView}
+        title="Fit to view"
+        style={{
+          position: "absolute", bottom: "16px", right: "16px",
+          background: "#1a1d27", border: "1px solid #2a2e3a", borderRadius: "6px",
+          color: "#a1a1aa", cursor: "pointer", fontSize: "11px", padding: "6px 10px",
+        }}
+      >
+        ⊡ Fit
+      </button>
+    </div>
   );
 }

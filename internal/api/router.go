@@ -10,7 +10,7 @@ import (
 	"github.com/netmap/netmap/internal/store"
 )
 
-func NewRouter(s *store.Store, hub *ws.Hub, scanHandler *handlers.ScanHandler) *chi.Mux {
+func NewRouter(s *store.Store, hub *ws.Hub, scanHandler *handlers.ScanHandler, configHandler *handlers.ConfigHandler, version string) *chi.Mux {
 	r := chi.NewRouter()
 
 	r.Use(chimiddleware.Recoverer)
@@ -21,7 +21,7 @@ func NewRouter(s *store.Store, hub *ws.Hub, scanHandler *handlers.ScanHandler) *
 	devices := handlers.NewDeviceHandler(s.Devices)
 	networks := handlers.NewNetworkHandler(s.Networks)
 	scans := scanHandler
-	system := handlers.NewSystemHandler(s.Devices, "0.1.0")
+	system := handlers.NewSystemHandler(s.Devices, version)
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Route("/devices", func(r chi.Router) {
@@ -48,9 +48,12 @@ func NewRouter(s *store.Store, hub *ws.Hub, scanHandler *handlers.ScanHandler) *
 			r.Get("/", scans.List)
 			r.Post("/", scans.Trigger)
 			r.Get("/{id}", scans.Get)
+			r.Delete("/{id}", scans.Cancel)
 		})
 
 		r.Get("/system/status", system.Status)
+		r.Get("/system/config", configHandler.Get)
+		r.Put("/system/config", configHandler.Put)
 
 		r.Get("/ws", hub.HandleWS)
 	})

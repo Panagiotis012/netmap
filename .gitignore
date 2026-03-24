@@ -1,2 +1,5 @@
 bin/
 .worktrees/
+netmap
+cmd/netmap/dist/
+node_modules/

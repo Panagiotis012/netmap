@@ -18,3 +18,12 @@ type Event struct {
 	Payload   interface{} `json:"payload"`
 	Timestamp time.Time   `json:"timestamp"`
 }
+
+type ScanProgressPayload struct {
+	ScanID       string `json:"scan_id"`
+	HostsScanned int    `json:"hosts_scanned"`
+	HostsTotal   int    `json:"hosts_total"`
+	HostsFound   int    `json:"hosts_found"`
+	Percent      int    `json:"percent"`
+	EtaSeconds   int    `json:"eta_seconds"`
+}

@@ -14,9 +14,13 @@ type PingResult struct {
 	LatencyMs float64
 }
 
+// ProgressFunc is called after each host is probed during PingSweep.
+// scanned = hosts attempted so far, total = total hosts, found = alive hosts found so far.
+type ProgressFunc func(scanned, total, found int)
+
 type Prober interface {
 	ARPScan(ctx context.Context, subnet string) ([]models.HostResult, error)
-	PingSweep(ctx context.Context, hosts []string) ([]PingResult, error)
+	PingSweep(ctx context.Context, hosts []string, progress ProgressFunc) ([]PingResult, error)
 	PortScan(ctx context.Context, ip string, ports []int) ([]models.PortResult, error)
 }
 
@@ -26,18 +30,22 @@ var CommonPorts = []int{
 }
 
 type Scanner struct {
-	prober  Prober
-	workers int
+	prober     Prober
+	workers    int
+	portRanges []int
 }
 
-func NewScanner(prober Prober, workers int) *Scanner {
+func NewScanner(prober Prober, workers int, portRanges []int) *Scanner {
 	if workers <= 0 {
 		workers = 50
 	}
-	return &Scanner{prober: prober, workers: workers}
+	if len(portRanges) == 0 {
+		portRanges = CommonPorts
+	}
+	return &Scanner{prober: prober, workers: workers, portRanges: portRanges}
 }
 
-func (s *Scanner) Scan(ctx context.Context, subnet string, mode models.ScanType) (*models.ScanResults, error) {
+func (s *Scanner) Scan(ctx context.Context, subnet string, mode models.ScanType, progress ProgressFunc) (*models.ScanResults, error) {
 	start := time.Now()
 
 	// Step 1: ARP/discovery
@@ -51,21 +59,24 @@ func (s *Scanner) Scan(ctx context.Context, subnet string, mode models.ScanType)
 	for i, h := range hosts {
 		ips[i] = h.IP
 	}
-	pingResults, err := s.prober.PingSweep(ctx, ips)
+	pingResults, err := s.prober.PingSweep(ctx, ips, progress)
 	if err != nil {
 		return nil, err
 	}
 
-	// Merge ping latency into hosts
+	// Keep only hosts that responded; copy latency from ping results.
 	pingMap := make(map[string]PingResult)
 	for _, p := range pingResults {
 		pingMap[p.IP] = p
 	}
-	for i := range hosts {
-		if p, ok := pingMap[hosts[i].IP]; ok {
-			hosts[i].LatencyMs = p.LatencyMs
+	alive := hosts[:0]
+	for _, h := range hosts {
+		if p, ok := pingMap[h.IP]; ok {
+			h.LatencyMs = p.LatencyMs
+			alive = append(alive, h)
 		}
 	}
+	hosts = alive
 
 	// Step 3: Port scan (port and full modes)
 	if mode == models.ScanPort || mode == models.ScanFull {
@@ -93,7 +104,7 @@ func (s *Scanner) portScanHosts(ctx context.Context, hosts []models.HostResult) 
 		go func(idx int) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			ports, err := s.prober.PortScan(ctx, hosts[idx].IP, CommonPorts)
+			ports, err := s.prober.PortScan(ctx, hosts[idx].IP, s.portRanges)
 			if err == nil {
 				hosts[idx].Ports = ports
 			}
