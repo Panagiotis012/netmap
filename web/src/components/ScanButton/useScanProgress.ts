@@ -88,11 +88,26 @@ export function useScanProgress() {
       });
     });
 
+    const unsubUpdated = wsClient.on("device.updated", (e) => {
+      const device = e.payload as Device;
+      upsert(device);
+      if (device.status === "offline") {
+        const label = device.hostname || device.ip_addresses?.[0] || "Unknown";
+        useAlertsStore.getState().addAlert({
+          type: "device_offline",
+          message: `Device offline: ${label}`,
+          timestamp: new Date().toISOString(),
+          deviceId: device.id,
+        });
+      }
+    });
+
     return () => {
       unsubProgress();
       unsubStarted();
       unsubCompleted();
       unsubDiscovered();
+      unsubUpdated();
       if (dismissTimer !== null) clearTimeout(dismissTimer);
     };
   }, [upsert]);

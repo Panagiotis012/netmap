@@ -2,7 +2,7 @@ import { create } from "zustand";
 
 export interface Alert {
   id: string;
-  type: "device_discovered" | "device_updated" | "scan_started" | "scan_completed" | "scan_failed";
+  type: "device_discovered" | "device_updated" | "device_offline" | "scan_started" | "scan_completed" | "scan_failed";
   message: string;
   timestamp: string; // ISO string
   deviceId?: string;

@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Radar, Monitor, AlertCircle, CheckCircle, RotateCcw } from "lucide-react";
+import { Radar, Monitor, AlertCircle, CheckCircle, RotateCcw, WifiOff } from "lucide-react";
 import { useAlertsStore } from "../stores/alertsStore";
 import type { Alert } from "../stores/alertsStore";
 
@@ -27,6 +27,12 @@ function AlertIcon({ type }: { type: Alert["type"] }) {
       return (
         <div style={{ ...base, backgroundColor: "rgba(45,212,191,0.08)" }}>
           <RotateCcw size={16} strokeWidth={1.5} color="#2dd4bf" />
+        </div>
+      );
+    case "device_offline":
+      return (
+        <div style={{ ...base, backgroundColor: "rgba(239,68,68,0.12)" }}>
+          <WifiOff size={16} strokeWidth={1.5} color="#ef4444" />
         </div>
       );
     case "scan_started":

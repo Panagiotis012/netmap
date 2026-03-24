@@ -15,6 +15,7 @@ export interface Device {
   last_seen_at: string;
   tags: string[];
   ports?: PortResult[];
+  latency_ms?: number;
   group_id?: string;
   metadata?: Record<string, unknown>;
   map_x?: number;

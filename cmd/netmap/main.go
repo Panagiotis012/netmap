@@ -102,9 +102,17 @@ func main() {
 		}
 	}
 
+	// Port ranges from config (fall back to CommonPorts if not set / invalid)
+	portRanges := scanner.CommonPorts
+	if v := configRepo.Get(context.Background(), "port_ranges"); v != "" {
+		if parsed := parsePortRanges(v); len(parsed) > 0 {
+			portRanges = parsed
+		}
+	}
+
 	// Scanner — NOTE: NewNetworkProber takes (timeout, workers)
 	prober := scanner.NewNetworkProber(2*time.Second, cfg.ScanWorkers)
-	sc := scanner.NewScanner(prober, cfg.ScanWorkers)
+	sc := scanner.NewScanner(prober, cfg.ScanWorkers, portRanges)
 
 	runScan := func(ctx context.Context, scanID string, scanType models.ScanType, target string) {
 		job, err := s.Scans.GetByID(context.Background(), scanID)
@@ -191,6 +199,7 @@ func main() {
 					LastSeenAt:      now,
 					Tags:            []string{},
 					Ports:           host.Ports,
+					LatencyMs:       host.LatencyMs,
 				}
 				s.Devices.Create(context.Background(), device)
 				bus.Publish(models.Event{Type: models.EventDeviceDiscovered, Payload: device, Timestamp: now})
@@ -207,6 +216,7 @@ func main() {
 				if len(host.Ports) > 0 {
 					existing.Ports = host.Ports
 				}
+				existing.LatencyMs = host.LatencyMs
 				s.Devices.Update(context.Background(), existing)
 				bus.Publish(models.Event{Type: models.EventDeviceUpdated, Payload: existing, Timestamp: now})
 			}

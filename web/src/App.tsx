@@ -43,11 +43,9 @@ export default function App() {
     wsClient.connect();
 
     const unsub1 = wsClient.on("device.discovered", (e) => upsert(e.payload as Device));
-    const unsub2 = wsClient.on("device.updated", (e) => upsert(e.payload as Device));
 
     return () => {
       unsub1();
-      unsub2();
       wsClient.disconnect();
     };
   }, []);

@@ -44,4 +44,5 @@ var migrations = []string{
     value TEXT NOT NULL
 )`,
 	`ALTER TABLE devices ADD COLUMN ports TEXT NOT NULL DEFAULT '[]'`,
+	`ALTER TABLE devices ADD COLUMN latency_ms REAL NOT NULL DEFAULT 0`,
 }

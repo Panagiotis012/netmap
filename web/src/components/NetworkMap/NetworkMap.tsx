@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import cytoscape from "cytoscape";
 import { useDeviceStore } from "../../stores/deviceStore";
 import { mapStylesheet } from "./mapStyles";
@@ -85,10 +85,24 @@ export function NetworkMap() {
     }
   }, [devices]);
 
+  const fitToView = useCallback(() => {
+    cyRef.current?.fit(undefined, 60);
+  }, []);
+
   return (
-    <div
-      ref={containerRef}
-      style={{ width: "100%", height: "100%", background: "#0f1117" }}
-    />
+    <div style={{ position: "relative", width: "100%", height: "100%" }}>
+      <div ref={containerRef} style={{ width: "100%", height: "100%", background: "#0f1117" }} />
+      <button
+        onClick={fitToView}
+        title="Fit to view"
+        style={{
+          position: "absolute", bottom: "16px", right: "16px",
+          background: "#1a1d27", border: "1px solid #2a2e3a", borderRadius: "6px",
+          color: "#a1a1aa", cursor: "pointer", fontSize: "11px", padding: "6px 10px",
+        }}
+      >
+        ⊡ Fit
+      </button>
+    </div>
   );
 }

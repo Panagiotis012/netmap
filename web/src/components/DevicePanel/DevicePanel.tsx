@@ -1,4 +1,4 @@
-import { X, Wifi, WifiOff, HelpCircle, Trash2 } from "lucide-react";
+import { X, Wifi, WifiOff, HelpCircle, Trash2, Pencil, Check } from "lucide-react";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useUIStore } from "../../stores/uiStore";
@@ -14,6 +14,48 @@ const statusConfig = {
   unknown: { icon: HelpCircle, color: "#71717a", label: "Unknown" },
 };
 
+function EditableField({ label, value, onSave }: { label: string; value: string; onSave: (v: string) => Promise<void> }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+
+  const commit = async () => {
+    await onSave(draft);
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 0" }}>
+        <span style={{ color: "#71717a", fontSize: "12px" }}>{label}</span>
+        <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+          <input
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") { setDraft(value); setEditing(false); } }}
+            style={{ background: "#0f1117", border: "1px solid #2a2e3a", borderRadius: "4px", color: "#e4e4e7", padding: "2px 6px", fontSize: "12px", width: "140px" }}
+          />
+          <button onClick={commit} style={{ background: "none", border: "none", cursor: "pointer", color: "#2dd4bf", padding: "2px" }}>
+            <Check size={12} />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 0" }}>
+      <span style={{ color: "#71717a", fontSize: "12px" }}>{label}</span>
+      <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+        <span style={{ fontSize: "12px", color: "#a1a1aa" }}>{value || <span style={{ color: "#52525b" }}>—</span>}</span>
+        <button onClick={() => { setDraft(value); setEditing(true); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#52525b", padding: "2px" }}>
+          <Pencil size={10} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function DevicePanel() {
   const selectedId = useUIStore((s) => s.selectedDeviceId);
   const selectDevice = useUIStore((s) => s.selectDevice);
@@ -27,6 +69,11 @@ export function DevicePanel() {
 
   const status = statusConfig[device.status] ?? statusConfig.unknown;
   const StatusIcon = status.icon;
+
+  const updateField = async (field: string, value: string) => {
+    const updated = await api.devices.update(device.id, { [field]: value });
+    upsert(updated);
+  };
 
   const updateTags = async (tags: string[]) => {
     const updated = await api.devices.update(device.id, { tags });
@@ -64,8 +111,11 @@ export function DevicePanel() {
       <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
         <StatusIcon size={16} color={status.color} />
         <span style={{ fontSize: "14px", color: status.color }}>{status.label}</span>
-        <span style={{ color: "#52525b", fontSize: "12px" }}>
-          Last seen {new Date(device.last_seen_at).toLocaleString()}
+        {device.latency_ms != null && device.latency_ms > 0 && (
+          <span style={{ color: "#52525b", fontSize: "12px" }}>{device.latency_ms.toFixed(1)} ms</span>
+        )}
+        <span style={{ color: "#52525b", fontSize: "12px", marginLeft: "auto" }}>
+          {new Date(device.last_seen_at).toLocaleString()}
         </span>
       </div>
 
@@ -76,7 +126,8 @@ export function DevicePanel() {
         {device.mac_addresses.map((mac) => (
           <DeviceInfo key={mac} label="MAC" value={mac} mono />
         ))}
-        {device.os && <DeviceInfo label="OS" value={device.os} />}
+        <EditableField label="Hostname" value={device.hostname} onSave={(v) => updateField("hostname", v)} />
+        <EditableField label="OS" value={device.os} onSave={(v) => updateField("os", v)} />
         <DeviceInfo label="Discovered" value={device.discovery_method} />
         <DeviceInfo label="First seen" value={new Date(device.first_seen_at).toLocaleString()} />
       </div>

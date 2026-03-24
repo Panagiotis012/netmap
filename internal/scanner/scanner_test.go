@@ -38,7 +38,7 @@ func TestScannerDiscoveryMode(t *testing.T) {
 		},
 	}
 
-	s := NewScanner(mock, 10)
+	s := NewScanner(mock, 10, nil)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -61,7 +61,7 @@ func TestScannerPortMode(t *testing.T) {
 		},
 	}
 
-	s := NewScanner(mock, 10)
+	s := NewScanner(mock, 10, nil)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 

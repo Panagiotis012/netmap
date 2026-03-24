@@ -30,15 +30,19 @@ var CommonPorts = []int{
 }
 
 type Scanner struct {
-	prober  Prober
-	workers int
+	prober     Prober
+	workers    int
+	portRanges []int
 }
 
-func NewScanner(prober Prober, workers int) *Scanner {
+func NewScanner(prober Prober, workers int, portRanges []int) *Scanner {
 	if workers <= 0 {
 		workers = 50
 	}
-	return &Scanner{prober: prober, workers: workers}
+	if len(portRanges) == 0 {
+		portRanges = CommonPorts
+	}
+	return &Scanner{prober: prober, workers: workers, portRanges: portRanges}
 }
 
 func (s *Scanner) Scan(ctx context.Context, subnet string, mode models.ScanType, progress ProgressFunc) (*models.ScanResults, error) {
@@ -100,7 +104,7 @@ func (s *Scanner) portScanHosts(ctx context.Context, hosts []models.HostResult) 
 		go func(idx int) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			ports, err := s.prober.PortScan(ctx, hosts[idx].IP, CommonPorts)
+			ports, err := s.prober.PortScan(ctx, hosts[idx].IP, s.portRanges)
 			if err == nil {
 				hosts[idx].Ports = ports
 			}

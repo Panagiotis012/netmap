@@ -2,6 +2,29 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDeviceStore } from "../stores/deviceStore";
 import { useUIStore } from "../stores/uiStore";
+import type { Device } from "../lib/types";
+
+function exportCSV(devices: Device[]) {
+  const headers = ["Hostname", "IP", "MAC", "OS", "Status", "Ports", "First Seen", "Last Seen"];
+  const rows = devices.map((d) => [
+    d.hostname,
+    d.ip_addresses.join("; "),
+    d.mac_addresses.join("; "),
+    d.os,
+    d.status,
+    (d.ports ?? []).map((p) => p.number).join("; "),
+    d.first_seen_at ? new Date(d.first_seen_at).toLocaleString() : "",
+    d.last_seen_at ? new Date(d.last_seen_at).toLocaleString() : "",
+  ]);
+  const csv = [headers, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `netmap-devices-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export function DeviceList() {
   const devices = useDeviceStore((s) => s.devices);
@@ -57,6 +80,18 @@ export function DeviceList() {
             outline: "none",
           }}
         />
+        <button
+          onClick={() => exportCSV(filtered)}
+          disabled={filtered.length === 0}
+          style={{
+            marginLeft: "auto", padding: "5px 12px", borderRadius: "6px",
+            border: "1px solid #2a2e3a", background: "transparent",
+            color: filtered.length === 0 ? "#3f3f46" : "#a1a1aa",
+            cursor: filtered.length === 0 ? "not-allowed" : "pointer", fontSize: "12px",
+          }}
+        >
+          Export CSV
+        </button>
       </div>
 
       {devices.length === 0 ? (

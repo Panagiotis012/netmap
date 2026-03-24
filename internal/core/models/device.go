@@ -34,6 +34,7 @@ type Device struct {
 	LastSeenAt      time.Time       `json:"last_seen_at" db:"last_seen_at"`
 	Tags            []string        `json:"tags" db:"tags"`
 	Ports           []PortResult    `json:"ports,omitempty" db:"ports"`
+	LatencyMs       float64         `json:"latency_ms,omitempty" db:"latency_ms"`
 	GroupID         *string         `json:"group_id,omitempty" db:"group_id"`
 	Metadata        json.RawMessage `json:"metadata,omitempty" db:"metadata"`
 	MapX            *float64        `json:"map_x,omitempty" db:"map_x"`
