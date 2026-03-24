@@ -12,6 +12,7 @@ import type { Device } from "./lib/types";
 import { Scans } from "./pages/Scans";
 import { DeviceList } from "./pages/DeviceList";
 import { Settings } from "./pages/Settings";
+import { Alerts } from "./pages/Alerts";
 import { Networks } from "./pages/settings/Networks";
 import { Scanning } from "./pages/settings/Scanning";
 import { General } from "./pages/settings/General";
@@ -61,7 +62,7 @@ export default function App() {
               <Route path="/" element={<MapView />} />
               <Route path="/devices" element={<DeviceList />} />
               <Route path="/scans" element={<Scans />} />
-              <Route path="/alerts" element={<div style={{ padding: "32px", color: "#71717a" }}>Alerts — Phase 2</div>} />
+              <Route path="/alerts" element={<Alerts />} />
               <Route path="/settings" element={<Settings />}>
                 <Route index element={<Networks />} />
                 <Route path="scanning" element={<Scanning />} />

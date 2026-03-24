@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { wsClient } from "../../lib/ws";
 import { useScanStore } from "../../stores/scanStore";
 import { useDeviceStore } from "../../stores/deviceStore";
+import { useAlertsStore } from "../../stores/alertsStore";
 import type { Device } from "../../lib/types";
 
 interface ScanProgressPayload {
@@ -11,6 +12,11 @@ interface ScanProgressPayload {
   hosts_found: number;
   percent: number;
   eta_seconds: number;
+}
+
+interface ScanStartedPayload {
+  id: string;
+  target: string;
 }
 
 export function useScanProgress() {
@@ -31,6 +37,16 @@ export function useScanProgress() {
       });
     });
 
+    const unsubStarted = wsClient.on("scan.started", (e) => {
+      const p = e.payload as ScanStartedPayload;
+      useAlertsStore.getState().addAlert({
+        type: "scan_started",
+        message: `Scan started: ${p.id}`,
+        timestamp: new Date().toISOString(),
+        scanId: p.id,
+      });
+    });
+
     const unsubCompleted = wsClient.on("scan.completed", () => {
       // Cancel any pending dismiss timer from a previous event before creating a new one
       if (dismissTimer !== null) clearTimeout(dismissTimer);
@@ -48,15 +64,31 @@ export function useScanProgress() {
         }
         dismissTimer = null;
       }, 8000);
+
+      useAlertsStore.getState().addAlert({
+        type: "scan_completed",
+        message: "Scan complete",
+        timestamp: new Date().toISOString(),
+      });
     });
 
     const unsubDiscovered = wsClient.on("device.discovered", (e) => {
-      upsert(e.payload as Device);
+      const device = e.payload as Device;
+      upsert(device);
       useScanStore.getState().incrementNewDevices();
+
+      const label = device.hostname || device.ip_addresses?.[0] || "Unknown";
+      useAlertsStore.getState().addAlert({
+        type: "device_discovered",
+        message: `New device: ${label}`,
+        timestamp: new Date().toISOString(),
+        deviceId: device.id,
+      });
     });
 
     return () => {
       unsubProgress();
+      unsubStarted();
       unsubCompleted();
       unsubDiscovered();
       if (dismissTimer !== null) clearTimeout(dismissTimer);

@@ -4,6 +4,7 @@ import { Map, Monitor, Bell, Radar, Settings, Search } from "lucide-react";
 import { useDeviceStore } from "../../stores/deviceStore";
 import { useUIStore } from "../../stores/uiStore";
 import { useNetworkStore } from "../../stores/networkStore";
+import { useAlertsStore } from "../../stores/alertsStore";
 import { StatusBadge } from "./StatusBadge";
 import { ScanButton } from "../ScanButton/ScanButton";
 import { ScanPopover } from "../ScanButton/ScanPopover";
@@ -21,6 +22,7 @@ export function TopNav() {
   const devices = useDeviceStore((s) => s.devices);
   const toggleCommandPalette = useUIStore((s) => s.toggleCommandPalette);
   const fetchNetworks = useNetworkStore((s) => s.fetch);
+  const unread = useAlertsStore((s) => s.unread);
 
   useScanProgress();
 
@@ -51,7 +53,35 @@ export function TopNav() {
               color: isActive ? "#2dd4bf" : "#a1a1aa",
             })}
           >
-            <Icon size={16} strokeWidth={1.5} />
+            {label === "Alerts" ? (
+              <span style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
+                <Icon size={16} strokeWidth={1.5} />
+                {unread > 0 && (
+                  <span style={{
+                    position: "absolute",
+                    top: "-5px",
+                    right: "-6px",
+                    minWidth: "14px",
+                    height: "14px",
+                    backgroundColor: "#ef4444",
+                    borderRadius: "7px",
+                    fontSize: "9px",
+                    fontWeight: 700,
+                    color: "#fff",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: "0 3px",
+                    lineHeight: 1,
+                    pointerEvents: "none",
+                  }}>
+                    {unread > 99 ? "99+" : unread}
+                  </span>
+                )}
+              </span>
+            ) : (
+              <Icon size={16} strokeWidth={1.5} />
+            )}
             {label}
           </NavLink>
         ))}
