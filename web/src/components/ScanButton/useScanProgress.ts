@@ -56,6 +56,8 @@ export function useScanProgress() {
       // scanning is done — re-enable the button immediately
       useScanStore.setState({ scanning: false });
       store.fetch();
+      // Always re-fetch devices after scan completes in case WS events were missed
+      useDeviceStore.getState().fetch();
       // Keep activeScan alive so the complete popover can display newDevicesCount.
       // Clear it after 8s auto-dismiss, but only if still in complete mode.
       dismissTimer = setTimeout(() => {
