@@ -71,7 +71,7 @@ export function DeviceList() {
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
           <thead>
             <tr style={{ borderBottom: "1px solid #2a2e3a" }}>
-              {["Status", "Hostname", "IP", "MAC", "OS", "Last Seen"].map((h) => (
+              {["Status", "Hostname", "IP", "MAC", "OS", "Ports", "Last Seen"].map((h) => (
                 <th key={h} style={{ textAlign: "left", padding: "6px 12px", color: "#71717a", fontWeight: 500 }}>{h}</th>
               ))}
             </tr>
@@ -101,6 +101,11 @@ export function DeviceList() {
                 </td>
                 <td style={{ padding: "8px 12px", color: "#71717a" }}>
                   {d.os || <span style={{ color: "#3f3f46" }}>—</span>}
+                </td>
+                <td style={{ padding: "8px 12px", color: "#52525b", fontFamily: "monospace", fontSize: "11px" }}>
+                  {d.ports && d.ports.length > 0
+                    ? d.ports.map((p) => p.number).join(", ")
+                    : <span style={{ color: "#3f3f46" }}>—</span>}
                 </td>
                 <td style={{ padding: "8px 12px", color: "#52525b", fontSize: "12px" }}>
                   {d.last_seen_at ? new Date(d.last_seen_at).toLocaleString() : "—"}

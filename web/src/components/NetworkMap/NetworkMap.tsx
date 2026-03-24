@@ -66,13 +66,19 @@ export function NetworkMap() {
     });
 
     if (devices.length > 1) {
-      const center = devices[0];
-      devices.slice(1).forEach((d) => {
-        const edgeId = `${center.id}-${d.id}`;
+      // Use the likely gateway (lowest host number in each subnet, typically .1)
+      // as the hub node. Fall back to devices[0] if nothing qualifies.
+      const gateway = devices.find((d) =>
+        d.ip_addresses.some((ip) => ip.endsWith(".1") || ip.endsWith(".254"))
+      ) ?? devices[0];
+
+      devices.forEach((d) => {
+        if (d.id === gateway.id) return;
+        const edgeId = `${gateway.id}-${d.id}`;
         if (!cy.getElementById(edgeId).length) {
           cy.add({
             group: "edges",
-            data: { id: edgeId, source: center.id, target: d.id, status: d.status },
+            data: { id: edgeId, source: gateway.id, target: d.id, status: d.status },
           });
         }
       });

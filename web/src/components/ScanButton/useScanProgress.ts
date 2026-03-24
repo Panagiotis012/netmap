@@ -17,6 +17,7 @@ interface ScanProgressPayload {
 interface ScanStartedPayload {
   id: string;
   target: string;
+  type: string;
 }
 
 export function useScanProgress() {
@@ -41,7 +42,7 @@ export function useScanProgress() {
       const p = e.payload as ScanStartedPayload;
       useAlertsStore.getState().addAlert({
         type: "scan_started",
-        message: `Scan started: ${p.id}`,
+        message: `${p.type ?? "discovery"} scan started on ${p.target}`,
         timestamp: new Date().toISOString(),
         scanId: p.id,
       });
@@ -65,9 +66,10 @@ export function useScanProgress() {
         dismissTimer = null;
       }, 8000);
 
+      const newCount = useScanStore.getState().activeScan?.newDevicesCount ?? 0;
       useAlertsStore.getState().addAlert({
         type: "scan_completed",
-        message: "Scan complete",
+        message: newCount > 0 ? `Scan complete — ${newCount} new device${newCount === 1 ? "" : "s"} found` : "Scan complete",
         timestamp: new Date().toISOString(),
       });
     });

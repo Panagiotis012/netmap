@@ -63,6 +63,7 @@ export function DevicePanel() {
         ))}
         {device.os && <DeviceInfo label="OS" value={device.os} />}
         <DeviceInfo label="Discovered" value={device.discovery_method} />
+        <DeviceInfo label="First seen" value={new Date(device.first_seen_at).toLocaleString()} />
       </div>
 
       {device.ports && device.ports.length > 0 && (
