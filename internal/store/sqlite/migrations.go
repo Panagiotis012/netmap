@@ -95,4 +95,15 @@ var migrations = []migration{
 		name: "create_alert_index",
 		sql: `CREATE INDEX IF NOT EXISTS idx_alerts_timestamp ON alerts(timestamp DESC)`,
 	},
+	// Additive column migrations for databases created before these columns existed.
+	// ALTER TABLE fails with "duplicate column name" on fresh installs — that error
+	// is silently ignored in the migration runner (see sqlite.go).
+	{
+		name: "add_devices_ports",
+		sql:  `ALTER TABLE devices ADD COLUMN ports TEXT NOT NULL DEFAULT '[]'`,
+	},
+	{
+		name: "add_devices_latency_ms",
+		sql:  `ALTER TABLE devices ADD COLUMN latency_ms REAL NOT NULL DEFAULT 0`,
+	},
 }

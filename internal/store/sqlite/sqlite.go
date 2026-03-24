@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -55,7 +56,13 @@ func (db *DB) migrate() error {
 			continue // already applied
 		}
 		if _, err := db.Exec(m.sql); err != nil {
-			return fmt.Errorf("migration v%d (%s) failed: %w", version, m.name, err)
+			// ALTER TABLE fails with "duplicate column name" on fresh installs
+			// where the column already exists from the CREATE TABLE migration.
+			if strings.Contains(err.Error(), "duplicate column name") {
+				// Column already exists — safe to skip.
+			} else {
+				return fmt.Errorf("migration v%d (%s) failed: %w", version, m.name, err)
+			}
 		}
 		if _, err := db.Exec(`INSERT INTO schema_migrations (version) VALUES (?)`, version); err != nil {
 			return fmt.Errorf("record migration v%d: %w", version, err)
