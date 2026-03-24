@@ -25,7 +25,7 @@ export interface Network {
   id: string;
   name: string;
   subnet: string;
-  gateway: string;
+  gateway: string; // may be empty string if not configured
 }
 
 export interface ScanJob {

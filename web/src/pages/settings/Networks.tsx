@@ -90,7 +90,7 @@ export function Networks() {
                   <div style={{ fontSize: "13px", color: "#e4e4e7" }}>{n.name}</div>
                   <div style={{ fontSize: "11px", color: "#71717a" }}>{n.subnet}{n.gateway ? ` · gw: ${n.gateway}` : ""}</div>
                 </div>
-                <button onClick={() => { setEditingId(n.id); setEditForm({ name: n.name, subnet: n.subnet, gateway: n.gateway }); }} style={{ background: "none", border: "none", color: "#a1a1aa", cursor: "pointer", fontSize: "12px" }}>✏</button>
+                <button onClick={() => { setEditingId(n.id); setEditForm({ name: n.name, subnet: n.subnet, gateway: n.gateway ?? "" }); }} style={{ background: "none", border: "none", color: "#a1a1aa", cursor: "pointer", fontSize: "12px" }}>✏</button>
                 <button onClick={() => setConfirmDelete(n)} style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontSize: "12px" }}>🗑</button>
               </>
             )}
