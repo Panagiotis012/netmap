@@ -97,3 +97,37 @@ export interface NetMapConfig {
   scan_workers: number;
   port_ranges: string;
 }
+
+export type MonitorType = "http" | "tcp" | "ping";
+export type MonitorStatus = "up" | "down" | "pending";
+
+export interface Monitor {
+  id: string;
+  name: string;
+  type: MonitorType;
+  url?: string;
+  host?: string;
+  port?: number;
+  interval: number;
+  timeout: number;
+  method?: string;
+  expected_status?: number;
+  keyword?: string;
+  active: boolean;
+  notify_webhook?: string;
+  status: MonitorStatus;
+  last_checked_at?: string;
+  uptime_day: number;
+  uptime_week: number;
+  created_at: string;
+}
+
+export interface MonitorCheck {
+  id: string;
+  monitor_id: string;
+  status: MonitorStatus;
+  response_time_ms: number;
+  status_code?: number;
+  error?: string;
+  checked_at: string;
+}

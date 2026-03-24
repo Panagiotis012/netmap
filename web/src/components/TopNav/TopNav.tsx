@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { NavLink } from "react-router-dom";
-import { Map, Monitor, Bell, Radar, Settings, Search, LogOut } from "lucide-react";
+import { Map, Monitor, Bell, Radar, Settings, Search, LogOut, Activity } from "lucide-react";
 import { useDeviceStore } from "../../stores/deviceStore";
 import { useUIStore } from "../../stores/uiStore";
 import { useNetworkStore } from "../../stores/networkStore";
@@ -14,6 +14,7 @@ import { useScanProgress } from "../ScanButton/useScanProgress";
 const navItems = [
   { to: "/", icon: Map, label: "Map" },
   { to: "/devices", icon: Monitor, label: "Devices" },
+  { to: "/monitors", icon: Activity, label: "Monitors" },
   { to: "/scans", icon: Radar, label: "Scans" },
   { to: "/alerts", icon: Bell, label: "Alerts" },
   { to: "/settings", icon: Settings, label: "Settings" },

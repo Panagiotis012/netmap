@@ -23,6 +23,7 @@ import (
 	"github.com/netmap/netmap/internal/core/config"
 	"github.com/netmap/netmap/internal/core/eventbus"
 	"github.com/netmap/netmap/internal/core/models"
+	"github.com/netmap/netmap/internal/monitor"
 	"github.com/netmap/netmap/internal/scanner"
 	"github.com/netmap/netmap/internal/store"
 	"github.com/netmap/netmap/internal/store/sqlite"
@@ -68,6 +69,7 @@ func main() {
 		Scans:    sqlite.NewScanRepo(db),
 		Alerts:   sqlite.NewAlertRepo(db),
 		Sessions: sqlite.NewSessionRepo(db),
+		Monitors: sqlite.NewMonitorRepo(db),
 	}
 
 	// Event bus
@@ -247,13 +249,19 @@ func main() {
 	sched.Start()
 	defer sched.Stop()
 
+	// Monitor runner
+	monitorRunner := monitor.NewRunner(s.Monitors)
+	go monitorRunner.Start(context.Background())
+	defer monitorRunner.Stop()
+
 	// HTTP server
 	scanHandler := handlers.NewScanHandler(s.Scans)
 	scanHandler.ScanTrigger = runScan
 	configHandler := handlers.NewConfigHandler(configRepo)
 	authHandler := handlers.NewAuthHandler(configRepo, s.Sessions)
 	alertHandler := handlers.NewAlertHandler(s.Alerts)
-	router := api.NewRouter(s, hub, scanHandler, configHandler, authHandler, alertHandler, version)
+	monitorHandler := handlers.NewMonitorHandler(s.Monitors, monitorRunner)
+	router := api.NewRouter(s, hub, scanHandler, configHandler, authHandler, alertHandler, monitorHandler, version)
 	router.Handle("/*", staticHandler())
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", cfg.Port),
